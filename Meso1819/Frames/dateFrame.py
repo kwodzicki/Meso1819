@@ -1,50 +1,37 @@
-try:
-  import tkinter as tk;
-except:
-  import Tkinter as tk;
+# try:
+#   import tkinter as tk;
+# except:
+#   import Tkinter as tk;
 
+
+from PySide import QtGui;
 from datetime import datetime;
 
-class dateFrame( tk.Frame ):
-  def __init__(self, parent):
-    tk.Frame.__init__(self, parent);
-    self.date       = datetime.utcnow()
+class dateFrame( QtGui.QFrame ):
+  def __init__(self, parent = None):
+    QtGui.QFrame.__init__(self, parent);
+    date       = datetime.utcnow()
 
-    self.year       = tk.IntVar();
-    self.month      = tk.IntVar();
-    self.day        = tk.IntVar();
-    self.hour       = tk.IntVar();
-    
-    self.year.set(  self.date.year  );
-    self.month.set( self.date.month );
-    self.day.set(   self.date.day   );
-    self.hour.set(  self.date.hour  );
+    self.year       = QtGui.QLineEdit( str( date.year  ) )
+    self.month      = QtGui.QLineEdit( str( date.month ) )
+    self.day        = QtGui.QLineEdit( str( date.day   ) )
+    self.hour       = QtGui.QLineEdit( str( date.hour  ) )
 
-    self.frameLabel = tk.Label(self, text = 'Date / Time');
+    year  = QtGui.QLabel('Year')
+    month = QtGui.QLabel('Month')
+    day   = QtGui.QLabel('Day')
+    hour  = QtGui.QLabel('Hour')
     
-    self.yearLabel  = tk.Label(self, text = 'Year: ' );   
-    self.monthLabel = tk.Label(self, text = 'Month: ');   
-    self.dayLabel   = tk.Label(self, text = 'Day: '  );   
-    self.hourLabel  = tk.Label(self, text = 'Hour: ' );
-    
-    self.yearEntry  = tk.Entry(self, textvariable = self.year  );
-    self.monthEntry = tk.Entry(self, textvariable = self.month );
-    self.dayEntry   = tk.Entry(self, textvariable = self.day   );
-    self.hourEntry  = tk.Entry(self, textvariable = self.hour  );
-    
-    self.yearEntry.configure(  justify = 'right', width = 5);
-    self.monthEntry.configure( justify = 'right', width = 5);
-    self.dayEntry.configure(   justify = 'right', width = 5);
-    self.hourEntry.configure(  justify = 'right', width = 5);
-    
-    self.frameLabel.grid( row = 0, column = 0, columnspan = 8 );
+    grid = QtGui.QGridLayout();
+    grid.addWidget( year,   0, 0 );
+    grid.addWidget( month,  0, 1 );
+    grid.addWidget( day,    0, 2 );
+    grid.addWidget( hour,   0, 3 );
 
-    self.yearLabel.grid(  row = 1, column = 0 );
-    self.monthLabel.grid( row = 1, column = 2 );
-    self.dayLabel.grid(   row = 1, column = 4 );
-    self.hourLabel.grid(  row = 1, column = 6 );
 
-    self.yearEntry.grid(  row = 1, column = 1 );
-    self.monthEntry.grid( row = 1, column = 3 );
-    self.dayEntry.grid(   row = 1, column = 5 );
-    self.hourEntry.grid(  row = 1, column = 7 ); 
+    grid.addWidget( self.year,   1, 0 );
+    grid.addWidget( self.month,  1, 1 );
+    grid.addWidget( self.day,    1, 2 );
+    grid.addWidget( self.hour,   1, 3 );
+    self.setLayout(grid)
+    
