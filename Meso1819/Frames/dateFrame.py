@@ -6,16 +6,22 @@
 
 from PySide import QtGui;
 from datetime import datetime;
+from settings import date_fmt
 
 class dateFrame( QtGui.QFrame ):
   def __init__(self, parent = None):
     QtGui.QFrame.__init__(self, parent);
     date       = datetime.utcnow()
 
-    self.year       = QtGui.QLineEdit( str( date.year  ) )
-    self.month      = QtGui.QLineEdit( str( date.month ) )
-    self.day        = QtGui.QLineEdit( str( date.day   ) )
-    self.hour       = QtGui.QLineEdit( str( date.hour  ) )
+    self.year       = QtGui.QLineEdit( )
+    self.month      = QtGui.QLineEdit( )
+    self.day        = QtGui.QLineEdit( )
+    self.hour       = QtGui.QLineEdit( )
+    
+    self.year.setText(  str( date.year  ) );
+    self.month.setText( str( date.month ) );
+    self.day.setText(   str( date.day   ) );
+    self.hour.setText(  str( date.hour  ) );
 
     year  = QtGui.QLabel('Year')
     month = QtGui.QLabel('Month')
@@ -34,4 +40,15 @@ class dateFrame( QtGui.QFrame ):
     grid.addWidget( self.day,    1, 2 );
     grid.addWidget( self.hour,   1, 3 );
     self.setLayout(grid)
+  ############################
+  def getDate(self, string = False):
     
+    date = datetime( int( self.year.text()  ),
+                     int( self.month.text() ),
+                     int( self.day.text()   ),
+                     int( self.hour.text()  ) );
+    if string:
+      return date.strftime( date_fmt );
+    else:
+      return date;
+ 

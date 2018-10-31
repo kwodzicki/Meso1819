@@ -1,44 +1,22 @@
 #!/usr/bin/env python2.7
+import logging
+
 import os, shutil, ConfigParser;
 import numpy as np;
 
 from PySide import QtCore;
 from PySide import QtGui;
 
-from Frames.dateFrame import dateFrame;    
-
 from sharppy.viz.SPCWindow import SPCWindow
 from sharppy.io.decoder import getDecoders
 
-import logging
+from QLogger import QLogger
+from Frames.dateFrame import dateFrame;    
+import settings;
 
-class QPlainTextEditLogger(logging.Handler):
-  '''Code from:
-  https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
-  '''
-  def __init__(self, parent = None):
-    logging.Handler.__init__(self)
-    
-    self.widget = QtGui.QPlainTextEdit()
-    self.widget.setReadOnly(True)
+_home    = os.path.expanduser('~');
+_desktop = os.path.join( _home, 'Desktop' );
 
-#     frame = QtGui.QFrame();
-# 
-#     label = QtGui.QLabel('Logs', frame);
-#     self.widget = QtGui.QPlainTextEdit( frame );
-#     self.widget.setReadOnly(True);
-#     grid = QtGui.QGridLayout();                                                 # Initialize grid layout
-#     grid.addWidget( label,       0, 0 );                                # Place a widget in the grid
-#     grid.addWidget( self.widget, 0, 1 );                                # Place a widget in the grid
-#     frame.setLayout( grid );                                            # Set the main widget's layout to the grid
-#  
-  def emit(self, record):
-    msg = self.format(record)
-    self.widget.appendPlainText(msg)
-  
-  def write(self, m):
-    pass
-      
 class indicator( QtGui.QWidget ): 
   '''
   A QtGui.QWidget subclass to draw green indicators to signify that
@@ -66,10 +44,11 @@ class Meso1819( QtGui.QMainWindow ):
     QtGui.QMainWindow.__init__(self);                                           # Initialize the base class
     self.setWindowTitle('Meso 18/19 Sounding Processor');                       # Set the window title
     self.src_dir    = None;                                                     # Set attribute for source data directory to None
-    self.dest_dir   = None;                                                     # Set attribute for destination data directory to None
+    self.dst_dir    = None;                                                     # Set attribute for destination data directory to None
     self.iop_name   = None;                                                     # Set attribute for the IOP name to None
     self.dateFrame  = None;                                                     # Set attribute for the date QFrame to None
     self.skew       = None;                                                     # Set attribute for the skewt plot to None
+    self.uploadFiles= None;
     self.config     = ConfigParser.RawConfigParser();                           # Initialize a ConfigParser; required for the SPCWidget
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
@@ -119,13 +98,14 @@ class Meso1819( QtGui.QMainWindow ):
     self.uploadButton.clicked.connect( self.ftp_upload );                       # Set method to run when 'FTP Upload' button is clicked
     self.uploadButton.setEnabled(False);                                        # Set enabled state to False; cannot click until after 'Generate Sounding' completes
     
-    log_handler = QPlainTextEditLogger( )
+    log_handler = QLogger( )
     self.log.addHandler(log_handler)
 
     grid = QtGui.QGridLayout();                                                 # Initialize grid layout
     grid.setSpacing(10);                                                        # Set spacing to 10
     grid.setColumnStretch(0, 10);                                               # Set column stretch for first column
     grid.setColumnStretch(1,  1);                                               # Set column stretch for second column
+    grid.setColumnStretch(2, 10);                                               # Set column stretch for first column
     grid.addWidget( self.sourceButton, 0, 0, 1, 1 );                            # Place a widget in the grid
     grid.addWidget( self.sourceSet,    0, 1, 1, 1 );                            # Place a widget in the grid
     grid.addWidget( self.sourcePath,   1, 0, 1, 2 );                            # Place a widget in the grid
@@ -138,7 +118,7 @@ class Meso1819( QtGui.QMainWindow ):
     grid.addWidget( self.procButton,   7, 0, 1, 2 );                            # Place a widget in the grid
     grid.addWidget( self.genButton,    8, 0, 1, 2 );                            # Place a widget in the grid
 
-    grid.addWidget( log_handler.widget, 0, 2, 9, 1);
+    grid.addWidget( log_handler.frame, 0, 2, 9, 1);
     centralWidget = QtGui.QWidget();                                            # Create a main widget
     centralWidget.setLayout( grid );                                            # Set the main widget's layout to the grid
     self.setCentralWidget(centralWidget);                                       # Set the central widget of the base class to the main widget
@@ -153,8 +133,9 @@ class Meso1819( QtGui.QMainWindow ):
     sounding data that was collected
     '''
     self.log.info('Setting the source directory')
-    self.src_dir = None;                                                        # Set src_dir attribute to None by default
-    src_dir = QtGui.QFileDialog.getExistingDirectory();                         # Open a selection dialog
+    self.src_dir    = None;                                                     # Set src_dir attribute to None by default
+    self.uploadFile = None;
+    src_dir = QtGui.QFileDialog.getExistingDirectory( dir = _desktop );                         # Open a selection dialog
     if src_dir == '': src_dir = None;                                           # If the src_dir is empty string, set src_dir to None
     try:                                                                        # Try to...
       self.src_dir = os.path.realpath( src_dir );                               # Get the real path of the src_dir; updating the src_dir attribute
@@ -169,7 +150,8 @@ class Meso1819( QtGui.QMainWindow ):
       self.sourcePath.setText( src_dir );                                       # Set the sourcePath label text
       self.sourcePath.show();                                                   # Show the sourcePath label
       self.sourceSet.show( );                                                   # Show the sourceSet icon
-      if self.dest_dir is not None:                                             # If the dest_dir attribute is not None
+      if self.dst_dir is not None:                                              # If the dst_dir attribute is not None
+        self.uploadFile = [];
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
   ##############################################################################
   def select_dest(self, *args):
@@ -178,39 +160,67 @@ class Meso1819( QtGui.QMainWindow ):
     sounding data that was collected
     '''
     self.log.info('Setting the destination directory')
-    self.dest_dir = None;                                                       # Set dest_dir attribute to None by default
-    dest_dir = QtGui.QFileDialog.getExistingDirectory();                        # Open a selection dialog
-    if dest_dir == '': dest_dir = None;                                         # If the dest_dir is empty string, set dest_dir to None
+    self.dst_dir    = None;                                                     # Set dst_dir attribute to None by default
+    self.uploadFile = None;
+    dst_dir = QtGui.QFileDialog.getExistingDirectory( dir = _desktop);                        # Open a selection dialog
+    if dst_dir == '': dst_dir = None;                                           # If the dst_dir is empty string, set dst_dir to None
     try:                                                                        # Try to...
-      self.dest_dir = os.path.realpath( dest_dir );                             # Get the real path of the dest_dir; updating the dest_dir attribute
+      self.dst_dir = os.path.realpath( dst_dir );                               # Get the real path of the dst_dir; updating the dst_dir attribute
     except:                                                                     # On exception
       self.log.warning( 'Error getting real path to destination directory' );   # Print a message
                                                                                 
-    if self.dest_dir is None:                                                   # If the dest_dir attribute is None
+    if self.dst_dir is None:                                                    # If the dst_dir attribute is None
       self.destSet.hide( );                                                     # Hide the destPath label
       self.destPath.hide();                                                     # Hide the destSet icon
       self.copyButton.setEnabled( False );                                      # Make sure that the 'Copy Files' button is disabled
     else:                                                                       # Else
       self.destSet.show( );                                                     # Set the destPath label text
-      self.destPath.setText( dest_dir )                                         # Show the destPath label
+      self.destPath.setText( dst_dir )                                          # Show the destPath label
       self.destPath.show()                                                      # Show the destSet icon
       if self.src_dir is not None:                                              # If the src_dir attribute is not None
+        self.uploadFile = [];
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
   ##############################################################################
   def copy_files(self, *args):
-    self.procButton.setEnabled( True );
-    return
-    if self.dest_dir is None: return;
-    if self.src_dir  is None: return;
-    if self.iop_name.text() == '': return;                                      # If there is no IOP name specified, then return
+    '''
+    Method for copying files from source to destination, renaming
+    files along the way
+    '''
+    if self.dst_dir is None: 
+      self.log.error( 'Destination directory NOT set!' );
+      return;
+    if self.src_dir  is None:
+      self.log.error( 'Source directory NOT set!' );
+      return;
+    if self.iop_name.text() == '':
+      self.log.error( 'IOP Name NOT set!' );
+      return;                                                                   # If there is no IOP name specified, then return
     
-    dest_dir = os.path.join( self.dest_dir.text, self.iopFrame.iop_name.text() );# Build destination directory using the dest_dir and iop_name
-    if not os.path.isdir( dest_dir ): os.make_dirs( dest_dir );                 # IF the dest_dir does NOT exist, then create it
-    dest_dir = os.path.join( dest_dir, self.iopFrame.sound_name.text() );       # Append the sound_name to the dest_dir
+    date_str     = self.dateFrame.getDate( string = True );                     # Get date string as entered in the gui
+    self.dst_dir = os.path.join( self.dst_dir, self.iop_name.text(), date_str );# Build destination directory using the dst_dir and iop_name
+    if not os.path.isdir( self.dst_dir ):                                       # If the output directory does NOT exist
+      self.log.info( 'Creating directory: ' + self.dst_dir );                   # Log some information
+      os.makedirs( dst_dir );                                                   # IF the dst_dir does NOT exist, then create it
 
-
-#     shutil.copy2( src_dir, dest_dir );                                          # Copy all data from the source directory to the dest_dir
-
+    self.log.info( 'Source directory: {}'.format(self.src_dir) );               # Log some information
+    self.log.info( 'Destination directory: {}'.format(self.dst_dir) );          # Log some information
+    self.log.info( 'Copying directory' );                                       # Log some information
+    for root, dirs, files in os.walk( self.src_dir ):                           # Walk over the source directory
+      for file in files:                                                        # Loop over all files
+        src = os.path.join( root, file );                                       # Set the source file path
+        for key in settings.rename:                                             # Loop over the keys in the settings.rename dictionary
+          if key in file:                                                       # If the key is in the source file name
+            dst_file = settings.rename[key].format(date_str);                   # Set a destination file name
+            dst      = os.path.join( dst_dir, dst_file );                       # Build the destination file path
+            self.uploadFile.append( dst );                                      # Append the file to the uploadFile list
+          else:                                                                 # Else
+            dst = os.path.join( dst_dir, file );                                # Set the destination path
+        shutil.copy2( src, dst );                                               # Copy all data from the source directory to the dst_dir
+        if not os.path.isfile( dst ):                                           # If the destination file does NOT exist
+          self.log.error( 'There was an error copying file: {}'.format(file) ); # Log a warning
+          # Maybe produce a dialog here?
+    self.log.info( 'Finished copying' );                                        # log some information
+    self.procButton.setEnabled( True );                                         # Enable the 'Process Files' button
   ##############################################################################
   def proc_files(self, *args):
     '''
