@@ -10,6 +10,35 @@ from Frames.dateFrame import dateFrame;
 from sharppy.viz.SPCWindow import SPCWindow
 from sharppy.io.decoder import getDecoders
 
+import logging
+
+class QPlainTextEditLogger(logging.Handler):
+  '''Code from:
+  https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
+  '''
+  def __init__(self, parent = None):
+    logging.Handler.__init__(self)
+    
+    self.widget = QtGui.QPlainTextEdit()
+    self.widget.setReadOnly(True)
+
+#     frame = QtGui.QFrame();
+# 
+#     label = QtGui.QLabel('Logs', frame);
+#     self.widget = QtGui.QPlainTextEdit( frame );
+#     self.widget.setReadOnly(True);
+#     grid = QtGui.QGridLayout();                                                 # Initialize grid layout
+#     grid.addWidget( label,       0, 0 );                                # Place a widget in the grid
+#     grid.addWidget( self.widget, 0, 1 );                                # Place a widget in the grid
+#     frame.setLayout( grid );                                            # Set the main widget's layout to the grid
+#  
+  def emit(self, record):
+    msg = self.format(record)
+    self.widget.appendPlainText(msg)
+  
+  def write(self, m):
+    pass
+      
 class indicator( QtGui.QWidget ): 
   '''
   A QtGui.QWidget subclass to draw green indicators to signify that
@@ -44,7 +73,9 @@ class Meso1819( QtGui.QMainWindow ):
     self.config     = ConfigParser.RawConfigParser();                           # Initialize a ConfigParser; required for the SPCWidget
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
-
+    
+    self.log = logging.getLogger()
+    self.log.setLevel( logging.DEBUG );
     self.initUI();                                                              # Run method to initialize user interface
 
   ##############################################################################
@@ -88,6 +119,8 @@ class Meso1819( QtGui.QMainWindow ):
     self.uploadButton.clicked.connect( self.ftp_upload );                       # Set method to run when 'FTP Upload' button is clicked
     self.uploadButton.setEnabled(False);                                        # Set enabled state to False; cannot click until after 'Generate Sounding' completes
     
+    log_handler = QPlainTextEditLogger( )
+    self.log.addHandler(log_handler)
 
     grid = QtGui.QGridLayout();                                                 # Initialize grid layout
     grid.setSpacing(10);                                                        # Set spacing to 10
@@ -105,6 +138,7 @@ class Meso1819( QtGui.QMainWindow ):
     grid.addWidget( self.procButton,   7, 0, 1, 2 );                            # Place a widget in the grid
     grid.addWidget( self.genButton,    8, 0, 1, 2 );                            # Place a widget in the grid
 
+    grid.addWidget( log_handler.widget, 0, 2, 9, 1);
     centralWidget = QtGui.QWidget();                                            # Create a main widget
     centralWidget.setLayout( grid );                                            # Set the main widget's layout to the grid
     self.setCentralWidget(centralWidget);                                       # Set the central widget of the base class to the main widget
@@ -118,13 +152,14 @@ class Meso1819( QtGui.QMainWindow ):
     Method for selecting the source directory of the
     sounding data that was collected
     '''
+    self.log.info('Setting the source directory')
     self.src_dir = None;                                                        # Set src_dir attribute to None by default
     src_dir = QtGui.QFileDialog.getExistingDirectory();                         # Open a selection dialog
     if src_dir == '': src_dir = None;                                           # If the src_dir is empty string, set src_dir to None
     try:                                                                        # Try to...
       self.src_dir = os.path.realpath( src_dir );                               # Get the real path of the src_dir; updating the src_dir attribute
     except:                                                                     # On exception
-      print( 'Error getting real path to source directory' );                   # Print a message
+      self.log.warning( 'Error getting real path to source directory' );        # Print a message
 
     if self.src_dir is None:                                                    # If the src_dir attribute is None
       self.sourcePath.hide();                                                   # Hide the sourcePath label
@@ -142,13 +177,14 @@ class Meso1819( QtGui.QMainWindow ):
     Method for selecting the destination directory of the
     sounding data that was collected
     '''
+    self.log.info('Setting the destination directory')
     self.dest_dir = None;                                                       # Set dest_dir attribute to None by default
     dest_dir = QtGui.QFileDialog.getExistingDirectory();                        # Open a selection dialog
     if dest_dir == '': dest_dir = None;                                         # If the dest_dir is empty string, set dest_dir to None
     try:                                                                        # Try to...
       self.dest_dir = os.path.realpath( dest_dir );                             # Get the real path of the dest_dir; updating the dest_dir attribute
     except:                                                                     # On exception
-      self.dest_dir = None;                                                     # Print a message
+      self.log.warning( 'Error getting real path to destination directory' );   # Print a message
                                                                                 
     if self.dest_dir is None:                                                   # If the dest_dir attribute is None
       self.destSet.hide( );                                                     # Hide the destPath label
