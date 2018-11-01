@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 import logging
 from PySide import QtGui;
-import settings;
+from Meso1819 import settings;
 
 class QLogger(logging.Handler):
   '''Code from:

@@ -9,9 +9,9 @@ setuptools.setup(
   url              = "https://github.com/kwodzicki/Meso1819",
   author           = "Kyle R. Wodzicki",
   author_email     = "krwodzicki@gmail.com",
-  version          = "0.1.3',
+  version          = "0.1.4',
   packages         = setuptools.find_packages(),
-  install_requires = [ "sharppy" ],
+  install_requires = [ "PySide", "numpy" ],
   scripts          = None,
   zip_safe = False
 );

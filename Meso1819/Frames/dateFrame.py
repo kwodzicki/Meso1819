@@ -6,7 +6,7 @@
 
 from PySide import QtGui;
 from datetime import datetime;
-from settings import date_fmt
+from Meso1819.settings import date_fmt
 
 class dateFrame( QtGui.QFrame ):
   def __init__(self, parent = None):

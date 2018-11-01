@@ -1,6 +1,4 @@
 .DS_Store
-#.gitignore
-*.sql
 
 # Following is from
 # https://github.com/github/gitignore/blob/master/Python.gitignore
@@ -26,6 +24,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+*.spec
 
 # Installer logs
 pip-log.txt
