@@ -9,33 +9,11 @@ from PySide import QtGui;
 from sharppy.viz.SPCWindow import SPCWindow
 from sharppy.io.decoder import getDecoders
 
-from QLogger import QLogger
-from Frames.dateFrame import dateFrame;    
+from widgets import QLogger, dateFrame, indicator;
 import settings;
 
 _home    = os.path.expanduser('~');
 _desktop = os.path.join( _home, 'Desktop' );
-
-class indicator( QtGui.QWidget ): 
-  '''
-  A QtGui.QWidget subclass to draw green indicators to signify that
-  a step as been completed
-  '''
-  def __init__(self, parent = None):
-    QtGui.QWidget.__init__(self, parent)
-
-  def paintEvent(self, event):
-    '''
-    Method to run on paint events
-    '''
-    painter = QtGui.QPainter();                                                 # Get a QtGui.QPainter object
-    painter.begin(self);                                                        # Begin painting
-    painter.setRenderHint( QtGui.QPainter.Antialiasing );                       # Set a rendering option
-    painter.setBrush( QtCore.Qt.transparent );                                  # Set the paint brush to transparent
-    painter.drawRect( 0, 0, 20, 20 );                                           # Draw a rectangle with width = height = 20
-    painter.setBrush( QtCore.Qt.green );                                        # Set the paint brush color to green
-    painter.drawEllipse( QtCore.QPoint(10, 10), 9, 9 );                         # Draw a circle that fills most of the rectangle
-    painter.end();                                                              # End the painting
 
 #############################################
 class Meso1819Gui( QtGui.QMainWindow ):
