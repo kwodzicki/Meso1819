@@ -9,6 +9,7 @@ from PySide import QtGui;
 from sharppy.viz.SPCWindow import SPCWindow
 from sharppy.io.decoder import getDecoders
 
+from iMet2SHARPpy import iMet2SHARPpy;
 from widgets import QLogger, dateFrame, indicator;
 import settings;
 
@@ -22,8 +23,10 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.setWindowTitle('Meso 18/19 Sounding Processor');                       # Set the window title
     self.src_dir     = None;                                                    # Set attribute for source data directory to None
     self.dst_dir     = None;                                                    # Set attribute for destination data directory to None
-    self.iop_name    = None;                                                    # Set attribute for the IOP name to None
+    self.dst_dirFull = None;                                                    # Set attribute for destination data directory to None
+    self.iopName     = None;                                                    # Set attribute for the IOP name to None
     self.dateFrame   = None;                                                    # Set attribute for the date QFrame to None
+    self.date        = None;
     self.date_str    = None;                                                    # Set attribute for date string
     self.skew        = None;                                                    # Set attribute for the skewt plot to None
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
@@ -43,7 +46,10 @@ class Meso1819Gui( QtGui.QMainWindow ):
     Method to setup the buttons/entries of the Gui
     '''
     self.dateFrame    = dateFrame( );                                           # Initialize the dateFrame
-    self.iop_name     = QtGui.QLineEdit('IOP Name');                            # Initialize Entry widget for the IOP name
+    self.iopLabel     = QtGui.QLabel('IOP Number');                             # Initialize Entry widget for the IOP name
+    self.iopName      = QtGui.QLineEdit();                                      # Initialize Entry widget for the IOP name
+    self.stationLabel = QtGui.QLabel('Station Name');                           # Initialize Entry widget for the IOP name
+    self.stationName  = QtGui.QLineEdit();                                      # Initialize Entry widget for the IOP name
     self.sourceButton = QtGui.QPushButton('Source Directory');                  # Initialize button for selecting the source directory
     self.destButton   = QtGui.QPushButton('Destination Directory');             # Initialize button for selecting the destination directory
     self.sourcePath   = QtGui.QLineEdit('');                                    # Initialize entry widget that will display the source directory path
@@ -58,6 +64,8 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.destPath.hide();                                                       # Hide the destination directory path
     self.sourceSet.hide();                                                      # Hide the source directory indicator
     self.destSet.hide();                                                        # Hide the destination directory indicator
+#     self.sourceSet.show();                                                      # Hide the source directory indicator
+#     self.destSet.show();                                                        # Hide the destination directory indicator
 
     self.sourceButton.clicked.connect( self.select_source );                    # Set method to run when the source button is clicked 
     self.destButton.clicked.connect(   self.select_dest   );                    # Set method to run when the destination button is clicked
@@ -87,24 +95,34 @@ class Meso1819Gui( QtGui.QMainWindow ):
 
     grid = QtGui.QGridLayout();                                                 # Initialize grid layout
     grid.setSpacing(10);                                                        # Set spacing to 10
-    grid.setColumnStretch(0, 10);                                               # Set column stretch for first column
-    grid.setColumnStretch(1,  1);                                               # Set column stretch for second column
-    grid.setColumnStretch(2, 10);                                               # Set column stretch for first column
-    grid.addWidget( self.sourceButton,  0, 0, 1, 1 );                           # Place a widget in the grid
-    grid.addWidget( self.sourceSet,     0, 1, 1, 1 );                           # Place a widget in the grid
-    grid.addWidget( self.sourcePath,    1, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.destButton,    2, 0, 1, 1 );                           # Place a widget in the grid
-    grid.addWidget( self.destSet,       2, 1, 1, 1 );                           # Place a widget in the grid
-    grid.addWidget( self.destPath,      3, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.iop_name,      4, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.dateFrame,     5, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.copyButton,    6, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.procButton,    7, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.genButton,     8, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.uploadButton,  9, 0, 1, 2 );                           # Place a widget in the grid
-    grid.addWidget( self.checkButton,  10, 0, 1, 2 );                           # Place a widget in the grid
+    for i in range(4): 
+      grid.setColumnStretch(i,  0);                                             # Set column stretch for ith column
+      grid.setColumnMinimumWidth(i,  60);                                       # Set column min width for ith column
+    grid.setColumnStretch(4,  0);                                               # Set column stretch for 5th column
+    grid.setColumnMinimumWidth(4,  20);                                         # Set column min width for 5th column
+    
+    grid.addWidget( self.sourceButton,  0, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.sourceSet,     0, 4, 1, 1 );                           # Place a widget in the grid
+    grid.addWidget( self.sourcePath,    1, 0, 1, 5 );                           # Place a widget in the grid
 
-    grid.addWidget( log_handler.frame, 0, 2, 11, 1);
+    grid.addWidget( self.destButton,    2, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.destSet,       2, 4, 1, 1 );                           # Place a widget in the grid
+    grid.addWidget( self.destPath,      3, 0, 1, 5 );                           # Place a widget in the grid
+
+    grid.addWidget( self.iopLabel,      4, 0, 1, 2 );                           # Place a widget in the grid
+    grid.addWidget( self.iopName,       5, 0, 1, 2 );                           # Place a widget in the grid
+
+    grid.addWidget( self.stationLabel,  4, 2, 1, 2 );                           # Place a widget in the grid
+    grid.addWidget( self.stationName,   5, 2, 1, 2 );                           # Place a widget in the grid
+
+    grid.addWidget( self.dateFrame,     6, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.copyButton,    7, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.procButton,    8, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.genButton,     9, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.uploadButton, 10, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.checkButton,  11, 0, 1, 4 );                           # Place a widget in the grid
+
+    grid.addWidget( log_handler.frame, 0, 6, 12, 1);
     centralWidget = QtGui.QWidget();                                            # Create a main widget
     centralWidget.setLayout( grid );                                            # Set the main widget's layout to the grid
     self.setCentralWidget(centralWidget);                                       # Set the central widget of the base class to the main widget
@@ -134,7 +152,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     else:                                                                       # Else
       self.sourcePath.setText( src_dir );                                       # Set the sourcePath label text
       self.sourcePath.show();                                                   # Show the sourcePath label
-      self.sourceSet.show( );                                                   # Show the sourceSet icon
+      self.sourceSet.show();                                                    # Show the sourceSet icon
       if self.dst_dir is not None:                                              # If the dst_dir attribute is not None
         self.uploadFile = [];
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
@@ -179,25 +197,53 @@ class Meso1819Gui( QtGui.QMainWindow ):
     if self.src_dir  is None:
       self.log.error( 'Source directory NOT set!' );
       return;
-    if self.iop_name.text() == '':
-      self.log.error( 'IOP Name NOT set!' );
-      return;                                                                   # If there is no IOP name specified, then return
+
+    if self.iopName.text() == '':
+      self.log.error( 'IOP Number NOT set!!!' )
+      self.errorDialog( "Must set the IOP Number!!!" );
+      return
+    if self.stationName.text() == '':
+      self.log.error( 'IOP Number NOT set!!!' )
+      self.errorDialog( "Must set the Station Name!!!");
+      return
+
     
-    self.date_str = self.dateFrame.getDate( string = True );                     # Get date string as entered in the gui
-    self.dst_dir  = os.path.join( 
-      self.dst_dir, self.iop_name.text(), self.date_str 
-    );                                                                          # Build destination directory using the dst_dir and iop_name
-    if not os.path.isdir( self.dst_dir ):                                       # If the output directory does NOT exist
-      self.log.info( 'Creating directory: ' + self.dst_dir );                   # Log some information
+    self.date, self.date_str = self.dateFrame.getDate( );                       # Get datetime object and date string as entered in the gui
+    if self.date_str is None:
+      self.log.error( 'Date not set!!!' );
+      return;
+    self.dst_dirFull  = os.path.join( 
+      self.dst_dir, self.iopName.text(), self.date_str 
+    );                                                                          # Build destination directory using the dst_dir and iopName
+    if not os.path.isdir( self.dst_dirFull ):                                   # If the output directory does NOT exist
+      self.log.info( 'Creating directory: ' + self.dst_dirFull );               # Log some information
       os.makedirs( self.dst_dir );                                              # IF the dst_dir does NOT exist, then create it
+    else:                                                                       # Else, the directory exists, so check to over write
+      dial = QtGui.QMessageBox()
+      dial.setText( "The destination directory exists!\n" + \
+        "Do you want to overwrite it?\n" + \
+        "YOU CANNOT UNDO THIS ACTION!!!" 
+      );
+      dial.setIcon(QtGui.QMessageBox.Question)
+      yes = dial.addButton('Yes', QtGui.QMessageBox.YesRole)
+      dial.addButton('No', QtGui.QMessageBox.RejectRole)
+      dial.exec_()
+      if dial.clickedButton() == yes:
+        self.log.info( 'Removing directory: ' + self.dst_dirFull );             # Log some information
+        shutil.rmtree( self.dst_dirFull );                                      # Delete the directory
+        self.log.info( 'Creating directory: ' + self.dst_dirFull );             # Log some information
+        os.makedirs( self.dst_dirFull );                                        # IF the dst_dir does NOT exist, then create it
+      else:                                                                     # Else, don't do anything
+        self.log.warning('Cannot over write data!');                            # Log a warning
+        return;                                                                 # Return from function
 
     self.log.info( 'Source directory: {}'.format(self.src_dir) );               # Log some information
-    self.log.info( 'Destination directory: {}'.format(self.dst_dir) );          # Log some information
+    self.log.info( 'Destination directory: {}'.format(self.dst_dirFull) );      # Log some information
     self.log.info( 'Copying directory' );                                       # Log some information
     for root, dirs, files in os.walk( self.src_dir ):                           # Walk over the source directory
       for file in files:                                                        # Loop over all files
         src = os.path.join( root, file );                                       # Set the source file path
-        dst = os.path.join( self.dst_dir, file );                               # Set the destination path
+        dst = os.path.join( self.dst_dirFull, file );                           # Set the destination path
         shutil.copy2( src, dst );                                               # Copy all data from the source directory to the dst_dir
         if not os.path.isfile( dst ):                                           # If the destination file does NOT exist
           self.log.error( 'There was an error copying file: {}'.format(file) ); # Log a warning
@@ -216,19 +262,38 @@ class Meso1819Gui( QtGui.QMainWindow ):
     '''
     failed = False;                                                             # Initialize failed to False
     self.log.info( 'Processing files' );    
-    files = os.listdir( self.dst_dir );                                         # Get list of all files in the directory
+    files = os.listdir( self.dst_dirFull );                                     # Get list of all files in the directory
     for file in files:                                                          # Iterate over the list of files
       for key in settings.rename:                                               # Loop over the keys in the settings.rename dictionary
         if key in file:                                                         # If the key is in the source file name
           dst_file = settings.rename[key].format( self.date_str );              # Set a destination file name
-          dst      = os.path.join( self.dst_dir, dst_file );                    # Build the destination file path
-          src      = os.path.join( self.dst_dir, file );                        # Set source file path
+          dst      = os.path.join( self.dst_dirFull, dst_file );                # Build the destination file path
+          src      = os.path.join( self.dst_dirFull, file );                    # Set source file path
           self.uploadFile.append( dst );                                        # Append the file to the uploadFile list
           self.log.info( 'Moving file: {} -> {}'.format(src, dst) );            # Log some information
           os.rename( src, dst );                                                # Move the file
           if not os.path.isfile( dst ):                                         # If the renamed file does NOT exist
             self.log.error( 'There was an error renaming the file!' );          # Log an error
             failed = True;                                                      # Set failed to True
+      for key in settings.convert:                                              # Loop over the keys in the settings.rename dictionary
+        if key in file:                                                         # If the key is in the source file name
+          dst_file = settings.convert[key].format( self.date_str );             # Set a destination file name
+          self.sndDataFile = os.path.join( self.dst_dirFull, dst_file );        # Build the destination file path
+          src              = os.path.join( self.dst_dirFull, file );            # Set source file path
+          self.uploadFile.append( dst );                                        # Append the file to the uploadFile list
+          
+          self.log.info( 'Converting sounding data to SHARPpy format...' );     # Log some information
+          res = iMet2SHARPpy( src, self.stationName.text(), 
+            datetime = self.date, output = self.sndDataFile);
+          if not res or not os.path.isfile( self.sndDataFile ):                 # If the renamed file does NOT exist
+            self.sndDataFile = None;
+            self.log.error( 'There was an error renaming the file!' );          # Log an error
+            self.errorDialog(
+              'Problem converting the sounding data to SHARPpy format!'
+            );
+            failed = True;                                                      # Set failed to True
+
+
     if not failed:                                                              # If failed is False
       self.log.info( 'Ready to generate sounding image!' );                     # Log some info
       self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
@@ -238,12 +303,11 @@ class Meso1819Gui( QtGui.QMainWindow ):
     Method for generating the SPC-like sounding using the
     SPCWindow class of SHARPpy.
     '''
-    print( 'generating' )    
-    self.uploadButton.setEnabled( True );
-    filename = '/Users/kyle/14061619.sharppy';
-    filename = '/Volumes/ExtraHDD/Data/Soundings/LAUNCH154/LAUNCH154_SHARPPY.txt'
+    self.log.info( 'Generating Skew-T diagram' )    
+    sndDataPNG      = settings.skewT_fmt.format( self.date_str );
+    self.sndDataPNG = os.path.join( self.dst_dirFull, sndDataPNG );
     failure = False    
-    prof_collection, stn_id = self.__loadArchive(filename)
+    prof_collection, stn_id = self.__loadArchive( self.sndDataFile )
     model = "Archive"
     disp_name = stn_id
     run = prof_collection.getCurrentDate()
@@ -263,16 +327,35 @@ class Meso1819Gui( QtGui.QMainWindow ):
         self.skew.addProfileCollection(prof_collection)
     else:
       raise exc
-    file_name = '/Users/kyle/test_sound.png'
-    pixmap = QtGui.QPixmap.grabWidget( self.skew )
-    pixmap.save(file_name, 'PNG', 100)
-    self.config.set('paths', 'save_img', os.path.dirname(file_name))
+    dial = QtGui.QMessageBox()
+    dial.setText( "Check that the image looks okay.\n If ok, click save, else click cancel")
+    dial.setIcon(QtGui.QMessageBox.Question)
+    dial.addButton('Cancel', QtGui.QMessageBox.RejectRole)
+    save = dial.addButton('Save', QtGui.QMessageBox.YesRole)
+    dial.exec_()
+        
+    if dial.clickedButton() == save:
+      self.log.info('Saving the Skew-T to: {}'.format( self.sndDataPNG ) );
+      pixmap = QtGui.QPixmap.grabWidget( self.skew )
+      pixmap.save( self.sndDataPNG, 'PNG', 100)
+      self.config.set('paths', 'save_img', os.path.dirname(self.sndDataPNG))
+      self.uploadButton.setEnabled( True );
+    else:
+      self.log.critical('Skew-T save aborted! Not allowed to upload!')
+    self.skew.close();
+
   ##############################################################################
   def ftp_upload(self, *args):
     self.log.info( 'uploading data' )    
   ##############################################################################
   def check_site(self, *args):
     self.log.info( 'Checking site' )    
+  ##############################################################################
+  def errorDialog( self, message ):
+    QtGui.QMessageBox().critical(self, 
+      "Caution!", 
+      message
+    );
   ##############################################################################
   def __loadArchive(self, filename):
     """

@@ -9,7 +9,7 @@ setuptools.setup(
   url              = "https://github.com/kwodzicki/Meso1819",
   author           = "Kyle R. Wodzicki",
   author_email     = "krwodzicki@gmail.com",
-  version          = "0.1.5',
+  version          = "0.1.6',
   packages         = setuptools.find_packages(),
   install_requires = [ "PySide", "numpy" ],
   scripts          = None,

@@ -71,10 +71,10 @@ class dateFrame( QtGui.QFrame ):
     self.day        = QtGui.QLineEdit( )
     self.hour       = QtGui.QLineEdit( )
     
-    self.year.setText(  str( date.year  ) );
-    self.month.setText( str( date.month ) );
-    self.day.setText(   str( date.day   ) );
-    self.hour.setText(  str( date.hour  ) );
+#     self.year.setText(  str( date.year  ) );
+#     self.month.setText( str( date.month ) );
+#     self.day.setText(   str( date.day   ) );
+#     self.hour.setText(  str( date.hour  ) );
 
     year  = QtGui.QLabel('Year')
     month = QtGui.QLabel('Month')
@@ -94,14 +94,21 @@ class dateFrame( QtGui.QFrame ):
     grid.addWidget( self.hour,   1, 3 );
     self.setLayout(grid)
   ############################
-  def getDate(self, string = False):
-    
-    date = datetime( int( self.year.text()  ),
-                     int( self.month.text() ),
-                     int( self.day.text()   ),
-                     int( self.hour.text()  ) );
-    if string:
-      return date.strftime( settings.date_fmt );
-    else:
-      return date;
+  def getDate(self):
+
+    try:
+      date = datetime( int( self.year.text()  ),
+                       int( self.month.text() ),
+                       int( self.day.text()   ),
+                       int( self.hour.text()  ) );
+    except:
+      self.errorDialog( "Must set the date!!!" )      
+      return None, None;
+    return date, date.strftime( settings.date_fmt );
+  ##############################################################################
+  def errorDialog( self, message ):
+    QtGui.QMessageBox().critical(self, 
+      "Caution!", 
+      message
+    );
  
