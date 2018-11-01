@@ -213,11 +213,11 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.log.error( 'Date not set!!!' );
       return;
     self.dst_dirFull  = os.path.join( 
-      self.dst_dir, self.iopName.text(), self.date_str 
+      self.dst_dir, 'IOP'+self.iopName.text(), self.date_str 
     );                                                                          # Build destination directory using the dst_dir and iopName
     if not os.path.isdir( self.dst_dirFull ):                                   # If the output directory does NOT exist
       self.log.info( 'Creating directory: ' + self.dst_dirFull );               # Log some information
-      os.makedirs( self.dst_dir );                                              # IF the dst_dir does NOT exist, then create it
+      os.makedirs( self.dst_dirFull );                                          # IF the dst_dir does NOT exist, then create it
     else:                                                                       # Else, the directory exists, so check to over write
       dial = QtGui.QMessageBox()
       dial.setText( "The destination directory exists!\n" + \
