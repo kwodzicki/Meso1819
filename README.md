@@ -32,7 +32,7 @@ must be installed manually using pip or whatever package manager you use
 To start the GUI, simply run the Meso1819.py command found in the bin/ directory
 of this package:
 
-		python /path/to/bin/Meso1819.py
+		python /path/to/bin/runMeso1819.py
 
 ## License
 
