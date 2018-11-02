@@ -356,7 +356,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     dial.setText( "Check that the image looks okay.\n " + \
       "If ok, click save, else click cancel"
     );                                                                          # Set message for the box
-    dial.setIcon(QtGui.QMessageBox.QMessageBox);                                # Set icon for message to stop sign
+    dial.setIcon(QtGui.QMessageBox.Critical);                                   # Set icon for message to stop sign
     dial.addButton('Cancel', QtGui.QMessageBox.RejectRole);                     # Add cancel button
     save = dial.addButton('Save', QtGui.QMessageBox.YesRole);                   # Add save button
     dial.exec_();                                                               # Display the message dialog
