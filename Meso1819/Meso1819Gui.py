@@ -206,7 +206,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.errorDialog( "Must set the IOP Number!!!" );
       return
     if self.stationName.text() == '':
-      self.log.error( 'IOP Number NOT set!!!' )
+      self.log.error( 'Station Name NOT set!!!' )
       self.errorDialog( "Must set the Station Name!!!");
       return
 
@@ -217,7 +217,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.log.error( 'Date not set!!!' );                                      # Log an error
       return;                                                                   # Return from function
     self.dst_dirFull  = os.path.join( 
-      self.dst_dir, 'IOP'+self.iopName.text(), self.date_str 
+      self.dst_dir, 'IOP'+self.iopName.text(), self.date_str
     );                                                                          # Build destination directory using the dst_dir, iopName, and date string
     if not os.path.isdir( self.dst_dirFull ):                                   # If the output directory does NOT exist
       self.log.info( 'Creating directory: ' + self.dst_dirFull );               # Log some information
@@ -297,7 +297,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
           self.uploadFile.append( dst );                                        # Append the file to the uploadFile list
           
           self.log.info( 'Converting sounding data to SHARPpy format...' );     # Log some information
-          res = iMet2SHARPpy( src, self.stationName.text(), 
+          res = iMet2SHARPpy( src, self.stationName.text().upper(), 
             datetime = self.date, output = self.sndDataFile);                   # Run function to convert data to SHARPpy format
           if res and os.path.isfile( self.sndDataFile ):                        # If function returned True and the output file exists
             self.uploadFile.append( self.sndDataFile );

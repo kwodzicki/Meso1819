@@ -7,6 +7,11 @@ formatting strings for file names and logging, etc.
 log_fmt  = '%(levelname)-.4s - %(message)s';
 
 date_fmt  = '%Y%m%d%H%M';        # Format for datetime objects
+
+stations = {
+  'KCLL'  : {'id' : 'TAMU', 'city' : 'College Station', 'state' : 'TX'},
+}
+
 skewT_fmt = 'upperair.TAMU_sonde.{}.College_Station_TX_skewT.png'
 
 rename    = {
