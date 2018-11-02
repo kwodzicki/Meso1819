@@ -38,7 +38,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.skew        = None;                                                    # Set attribute for the skewt plot to None
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
     self.sndDataPNG  = None;                                                    # Set attribute for sounding image file
-    self.uploadFiless = None;                                                    # Set attribute for list of files to upload to ftp
+    self.uploadFiles = None;                                                    # Set attribute for list of files to upload to ftp
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
