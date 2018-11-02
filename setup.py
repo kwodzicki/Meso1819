@@ -12,6 +12,6 @@ setuptools.setup(
   version          = "0.1.10",
   packages         = setuptools.find_packages(),
   install_requires = [ "PySide", "numpy" ],
-  scripts          = None,
-  zip_safe = False
+  scripts          = ['bin/runMeso1819.py'],
+  zip_safe         = False
 );
