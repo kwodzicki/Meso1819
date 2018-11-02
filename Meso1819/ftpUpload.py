@@ -1,9 +1,11 @@
-from ftplib import FTP
+import logging;
+import os;
+from ftplib import FTP;
 
 class ftpUpload( FTP ):
-  def __init__(self, url, log):
+  def __init__(self, url):
     FTP.__init__(self, url);
-    self.log = log;
+    self.log = logging.getLogger(__name__);
   ################################################################
   def _login(self, user = None, passwd = None):
     try:
@@ -12,6 +14,7 @@ class ftpUpload( FTP ):
       self.log.critical('Failed to log into FTP!');
 #       self.log.error( err );
       return False; 
+    self.log.info('Logged into FTP server')
     return True; 
   ################################################################
   def _logout(self):
@@ -21,6 +24,7 @@ class ftpUpload( FTP ):
       self.log.warning('Failed to log out correctly!');
 #       self.log.error( err );
       return False;
+    self.log.info('Logged out of FTP server')
     return True;
   ################################################################
   def _cwd(self, dir):
@@ -30,6 +34,7 @@ class ftpUpload( FTP ):
       self.log.critical('Failed to change directory!');
 #       self.log.error( err );
       return False;
+    self.log.info('Changed to {}'.format(dir))
     return True;
 
   ################################################################
@@ -43,11 +48,13 @@ class ftpUpload( FTP ):
       base = os.path.basename( file );                                          # Get the base file name
       fid  = open(file, 'rb');                                                  # Open file in binary read mode
       try:                                                                      # Try to...
-        ftp.storbinary( 'STOR {}'.format( base ), fid );                        # Upload the file
+        self.storbinary( 'STOR {}'.format( base ), fid );                       # Upload the file
       except Exception as err:                                                  # On error
         failed = True;                                                          # Set failed to True
 #         log.error( err );
         self.log.critical( 'Failed to upload file {}'.format(base) );           # Log some information
+      else:
+        self.log.info( 'Uploaded file: {}'.format( base ) );
       fid.close();                                                              # close the file
     self._logout();                                                             # Logout of the FTP
     return (not failed);                                                        # Return opposite value of failed; i.e., if all passed, failed should be False, so this return True. If one or mored failed, failed will be True and thus return False

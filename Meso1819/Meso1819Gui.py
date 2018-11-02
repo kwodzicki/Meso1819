@@ -43,7 +43,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
     
-    self.log = logging.getLogger()
+    self.log = logging.getLogger( )
     self.log.setLevel( logging.DEBUG );
     self.initUI();                                                              # Run method to initialize user interface
 
@@ -376,15 +376,13 @@ class Meso1819Gui( QtGui.QMainWindow ):
   ##############################################################################
   def ftp_upload(self, *args):
     self.log.info( 'uploading data' )    
-    print( self.uploadFiles )
-    self.checkButton.setEnabled(True)
-    return;
     
-    ftp = ftpUpload( settings.ftp_info['url'], self.log );                      # Set up and FTP instance
-    res = ftp.upload(
+    ftp = ftpUpload( settings.ftp_info['url'] );                                # Set up and FTP instance
+    res = ftp.uploadFiles(
       settings.ftp_info['dir'], 
       self.uploadFiles, 
-      user = settings.ftp_info['user']
+      user   = settings.ftp_info['user'],
+      passwd = settings.ftp_info['passwd'],
     );                                                                          # Attempt to upload the files
     if not res:                                                                 # If one or more files failed to upload
       dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
@@ -396,7 +394,9 @@ class Meso1819Gui( QtGui.QMainWindow ):
       dial.setIcon(QtGui.QMessageBox.Critical);                                 # Set the icon for the dialog
       dial.addButton('Ok', QtGui.QMessageBox.YesRole);                          # Add a yes button
       dial.exec_();                                                             # Generate the message window
-
+      return;
+    self.log.info( 'Data upload successful!' )
+    self.checkButton.setEnabled(True)
   ##############################################################################
   def check_site(self, *args):
     self.log.info( 'Checking site' )    
@@ -429,7 +429,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       check = dial.clickedButton() == yes;                                      # Set check to result of button clicked == yes button
         
     if check or noDialog:                                                       # If the check is True or noDialog is True
-      self.log.info( 'Resetting all values!' );                                 # Log some information
+      self.log.debug( 'Resetting all values!' );                                # Log some information
       if not noSRC or not noDST:                                                # If noSRC is False OR noDST is false
         self.copyButton.setEnabled(False);                                      # Set enabled state to False; cannot click until after the source and destination directories set
       self.procButton.setEnabled(False);                                        # Set enabled state to False; cannot click until after 'Copy Files' completes
