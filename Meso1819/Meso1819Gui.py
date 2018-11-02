@@ -210,6 +210,20 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.errorDialog( "Must set the Station Name!!!");
       return
 
+    # Dialog to remind user to make sure date is entered correctly
+    dial = QtGui.QMessageBox();                                                 # Initialize a QMessage dialog
+    dial.setText( "Are you sure you entered to date correctly?\n\n" + \
+      "It MUST be in UTC time!"
+    );                                                                          # Set the message for the dialog
+    dial.setIcon(QtGui.QMessageBox.Question);                                   # Set the icon for the dialog
+    no = dial.addButton('No', QtGui.QMessageBox.RejectRole);                    # Add no button
+    dial.addButton('Yes', QtGui.QMessageBox.YesRole);                           # Add a yes button
+    dial.exec_();                                                               # Generate the message window
+    if dial.clickedButton() == no:                                              # If the user clicked no
+      self.log.warning('Copy cancelled due to incorrect date!');                # Log a warning
+      return;                                                                   # Return from function
+    
+    # Main copying code
     failed = False;                                                             # Initialize failed to False    
     self.uploadFile = []
     self.date, self.date_str = self.dateFrame.getDate( );                       # Get datetime object and date string as entered in the gui
@@ -225,7 +239,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     else:                                                                       # Else, the directory exists, so check to over write
       dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
       dial.setText( "The destination directory exists!\n" + \
-        "Do you want to overwrite it?\n" + \
+        "Do you want to overwrite it?\n\n" + \
         "YOU CANNOT UNDO THIS ACTION!!!" 
       );                                                                        # Set the message for the dialog
       dial.setIcon(QtGui.QMessageBox.Question);                                 # Set the icon for the dialog
@@ -342,7 +356,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     dial.setText( "Check that the image looks okay.\n " + \
       "If ok, click save, else click cancel"
     );                                                                          # Set message for the box
-    dial.setIcon(QtGui.QMessageBox.Question);                                   # Set icon for message to question mark
+    dial.setIcon(QtGui.QMessageBox.QMessageBox);                                # Set icon for message to stop sign
     dial.addButton('Cancel', QtGui.QMessageBox.RejectRole);                     # Add cancel button
     save = dial.addButton('Save', QtGui.QMessageBox.YesRole);                   # Add save button
     dial.exec_();                                                               # Display the message dialog
