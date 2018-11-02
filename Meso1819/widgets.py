@@ -64,29 +64,21 @@ class indicator( QtGui.QWidget ):
 class dateFrame( QtGui.QFrame ):
   def __init__(self, parent = None):
     QtGui.QFrame.__init__(self, parent);
-    date       = datetime.utcnow()
-
-    self.year       = QtGui.QLineEdit( )
-    self.month      = QtGui.QLineEdit( )
-    self.day        = QtGui.QLineEdit( )
-    self.hour       = QtGui.QLineEdit( )
+    self.year  = QtGui.QLineEdit( )
+    self.month = QtGui.QLineEdit( )
+    self.day   = QtGui.QLineEdit( )
+    self.hour  = QtGui.QLineEdit( )
     
-#     self.year.setText(  str( date.year  ) );
-#     self.month.setText( str( date.month ) );
-#     self.day.setText(   str( date.day   ) );
-#     self.hour.setText(  str( date.hour  ) );
-
-    year  = QtGui.QLabel('Year')
-    month = QtGui.QLabel('Month')
-    day   = QtGui.QLabel('Day')
-    hour  = QtGui.QLabel('Hour')
+    year       = QtGui.QLabel('Year')
+    month      = QtGui.QLabel('Month')
+    day        = QtGui.QLabel('Day')
+    hour       = QtGui.QLabel('Hour')
     
     grid = QtGui.QGridLayout();
     grid.addWidget( year,   0, 0 );
     grid.addWidget( month,  0, 1 );
     grid.addWidget( day,    0, 2 );
     grid.addWidget( hour,   0, 3 );
-
 
     grid.addWidget( self.year,   1, 0 );
     grid.addWidget( self.month,  1, 1 );
@@ -95,7 +87,7 @@ class dateFrame( QtGui.QFrame ):
     self.setLayout(grid)
   ############################
   def getDate(self):
-
+    '''Method to return datetime object and formatted date string'''
     try:
       date = datetime( int( self.year.text()  ),
                        int( self.month.text() ),
@@ -106,7 +98,15 @@ class dateFrame( QtGui.QFrame ):
       return None, None;
     return date, date.strftime( settings.date_fmt );
   ##############################################################################
+  def resetDate(self):
+    '''Method to reset all date entry boxes'''
+    self.year.setText(  '' )
+    self.month.setText( '' )
+    self.day.setText(   '' )
+    self.hour.setText(  '' )
+  ##############################################################################
   def errorDialog( self, message ):
+    '''Method to generate an error dialog'''
     QtGui.QMessageBox().critical(self, 
       "Caution!", 
       message

@@ -16,3 +16,13 @@ rename    = {
 convert = {
   'TSPOTINT.txt' : 'upperair.TAMU_sonde.{}.College_Station_TX_SHARPpy.txt',
 }
+
+url_check = 'http://catalog.eol.ucar.edu/meso18-19/upperair';
+
+ftp_info = {
+  'url'  : 'catalog.eol.ucar.edu',
+  'user' : 'anonymous',
+  'dir'  : '/pub/incoming/catalog/vortexse',
+}
+            
+            
