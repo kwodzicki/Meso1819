@@ -16,6 +16,7 @@ from sharppy.viz.SPCWindow import SPCWindow
 from sharppy.io.decoder import getDecoders
 
 from iMet2SHARPpy import iMet2SHARPpy;
+from ftpUpload import ftpUpload;
 from widgets import QLogger, dateFrame, indicator;
 import settings;
 
@@ -37,7 +38,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.skew        = None;                                                    # Set attribute for the skewt plot to None
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
     self.sndDataPNG  = None;                                                    # Set attribute for sounding image file
-    self.uploadFiles = None;                                                    # Set attribute for list of files to upload to ftp
+    self.uploadFiless = None;                                                    # Set attribute for list of files to upload to ftp
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
@@ -159,7 +160,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.sourcePath.show();                                                   # Show the sourcePath label
       self.sourceSet.show();                                                    # Show the sourceSet icon
       if self.dst_dir is not None:                                              # If the dst_dir attribute is not None
-        self.uploadFile = [];
+        self.uploadFiles = [];
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
         self.reset_values(noDialog = True, noSRC = True, noDST = True);         # Reset all values excluding the src AND dst directory
       else:
@@ -183,7 +184,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.destPath.setText( dst_dir )                                          # Show the destPath label
       self.destPath.show()                                                      # Show the destSet icon
       if self.src_dir is not None:                                              # If the src_dir attribute is not None
-        self.uploadFile = [];
+        self.uploadFiles = [];
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
         self.reset_values(noDialog = True, noSRC = True, noDST = True);         # Reset all values excluding the src AND dst directory
       else:
@@ -225,7 +226,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     
     # Main copying code
     failed = False;                                                             # Initialize failed to False    
-    self.uploadFile = []
+    self.uploadFiles = []
     self.date, self.date_str = self.dateFrame.getDate( );                       # Get datetime object and date string as entered in the gui
     if self.date is None:                                                       # If the date variable is set to None
       self.log.error( 'Date not set!!!' );                                      # Log an error
@@ -297,7 +298,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
           dst_file = settings.rename[key].format( self.date_str );              # Set a destination file name
           dst      = os.path.join( self.dst_dirFull, dst_file );                # Build the destination file path
           src      = os.path.join( self.dst_dirFull, file );                    # Set source file path
-          self.uploadFile.append( dst );                                        # Append the file to the uploadFile list
+#           self.uploadFiles.append( dst );                                       # Append the file to the uploadFile list
           self.log.info( 'Moving file: {} -> {}'.format(src, dst) );            # Log some information
           os.rename( src, dst );                                                # Move the file
           if not os.path.isfile( dst ):                                         # If the renamed file does NOT exist
@@ -308,13 +309,13 @@ class Meso1819Gui( QtGui.QMainWindow ):
           dst_file = settings.convert[key].format( self.date_str );             # Set a destination file name
           self.sndDataFile = os.path.join( self.dst_dirFull, dst_file );        # Build the destination file path
           src              = os.path.join( self.dst_dirFull, file );            # Set source file path
-          self.uploadFile.append( dst );                                        # Append the file to the uploadFile list
+#           self.uploadFiles.append( dst );                                        # Append the file to the uploadFile list
           
           self.log.info( 'Converting sounding data to SHARPpy format...' );     # Log some information
           res = iMet2SHARPpy( src, self.stationName.text().upper(), 
             datetime = self.date, output = self.sndDataFile);                   # Run function to convert data to SHARPpy format
           if res and os.path.isfile( self.sndDataFile ):                        # If function returned True and the output file exists
-            self.uploadFile.append( self.sndDataFile );
+            self.uploadFiles.append( self.sndDataFile );
           else:
             failed = True;                                                      # Set failed to True
             self.sndDataFile = None;                                            # if the function failed to run OR the output file does NOT exist
@@ -362,7 +363,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     dial.exec_();                                                               # Display the message dialog
         
     if dial.clickedButton() == save:                                            # If the user clicked the save button
-      self.uploadFile.append( self.sndDataPNG );
+      self.uploadFiles.append( self.sndDataPNG );
       self.log.info('Saving the Skew-T to: {}'.format( self.sndDataPNG ) );     # Log some information
       pixmap = QtGui.QPixmap.grabWidget( self.skew );                           # Grab the image from the skew T window
       pixmap.save( self.sndDataPNG, 'PNG', 100);                                # Save the image
@@ -375,7 +376,27 @@ class Meso1819Gui( QtGui.QMainWindow ):
   ##############################################################################
   def ftp_upload(self, *args):
     self.log.info( 'uploading data' )    
+    print( self.uploadFiles )
     self.checkButton.setEnabled(True)
+    return;
+    
+    ftp = ftpUpload( settings.ftp_info['url'], self.log );                      # Set up and FTP instance
+    res = ftp.upload(
+      settings.ftp_info['dir'], 
+      self.uploadFiles, 
+      user = settings.ftp_info['user']
+    );                                                                          # Attempt to upload the files
+    if not res:                                                                 # If one or more files failed to upload
+      dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
+      dial.setText( "Something went wrong!\n\n" + \
+        "There was an error uploading one or more files to the FTP.\n" + \
+        "Check the logs to determine which file(s) failed to upload.\n\n" + \
+        "YOU MUST MANUALLY UPLOAD ANY FILES THAT FAILED!!!"
+      );                                                                        # Set the message for the dialog
+      dial.setIcon(QtGui.QMessageBox.Critical);                                 # Set the icon for the dialog
+      dial.addButton('Ok', QtGui.QMessageBox.YesRole);                          # Add a yes button
+      dial.exec_();                                                             # Generate the message window
+
   ##############################################################################
   def check_site(self, *args):
     self.log.info( 'Checking site' )    
