@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import logging
 import numpy as np
 
 #===============================================================================================================
@@ -14,10 +15,14 @@ import numpy as np
 #
 #==============================================================================================================
 def iMet2SHARPpy( filename, stationID, time = None, datetime = None, output = None, skip_header = 3 ):
+  log = logging.getLogger( __name__ );
   if time is None and datetime is None:
+    log.warning('No time or datetime object input!')
     return False;
   elif time is None:
     time = datetime.strftime('%H%M');
+
+  log.debug('Reading input file')
   try:
     DAT = np.genfromtxt(filename, skip_header = skip_header)
   except:
@@ -25,6 +30,7 @@ def iMet2SHARPpy( filename, stationID, time = None, datetime = None, output = No
       DAT = fid.readlines();                                     # Read in all the data
     DAT = [ d.rstrip().split() for d in DAT[skip_header:] ];     # Strip carriage returns and split on spaces for each line beyond header
     DAT = np.array( DAT, dtype = float );                        # Convert data to float
+
   pres = DAT[:,0]
   hght = DAT[:,1]
   T    = DAT[:,2]
@@ -40,25 +46,35 @@ def iMet2SHARPpy( filename, stationID, time = None, datetime = None, output = No
     year  = datetime.strftime('%y');
     month = datetime.strftime('%m');
     day   = datetime.strftime('%d');
+
+  log.debug('Opening output file')
   if output is None:
     fout = open(year + month + day + time + "_SHARPpy", "wt")
   else:
     fout = open(output, "w")
   
+  log.debug('Writing header information')
   fout.write("%TITLE%\n")
   fout.write(stationID + " " + year + month + day + "/" + time + "\n\n");
   fout.write("LEVEL  HGHT  TEMP  DWPT WDIR  WSPD\n")
   fout.write("----------------------------------\n")
   fout.write("%RAW%\n")
+
   n     = 0
-  mhght = hght[0]; # Set the maximum height reached by the ballon
+  mhght = -9999.0; # Set the maximum height reached by the ballon
+  nrm   = 0;       # Number of lines removed from balloon descent
   while n <= len(pres)-1:
     if hght[n] > mhght:
       mhght = hght[n]; # Update the maximum height reached
       if wdir[n] == 360.0: wdir[n] = 0.0
       fout.write("%s, %s, %s, %s, %s, %s\n" %(pres[n], hght[n], T[n], Td[n], wdir[n], wspd[n]))
+    else:
+      nrm = nrm + 1;
     n=n+1
   fout.write("%END%\n");
+  if nrm > 0:
+    log.warning( 'Balloon descent(s) detected, {} lines removed'.format(nrm) );
+  log.debug('Finished converting file')
   return True
 
 if __name__ == "__main__":

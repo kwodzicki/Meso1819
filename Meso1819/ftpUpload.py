@@ -11,7 +11,7 @@ class ftpUpload( FTP ):
     try:
       self.login( user, passwd );
     except Exception as err:
-      self.log.critical('Failed to log into FTP!');
+      self.log.critical('Failed to login to FTP!');
 #       self.log.error( err );
       return False; 
     self.log.info('Logged into FTP server')

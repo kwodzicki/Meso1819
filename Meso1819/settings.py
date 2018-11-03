@@ -4,7 +4,7 @@ formatting strings for file names and logging, etc.
 '''
 
 # log_fmt  = '%(levelname)-.4s - %(message)s - %(asctime)s';
-log_fmt   = '%(levelname)-.4s - %(message)s - %(name)s-%(funcName)s ';
+log_fmt   = '%(levelname)-.4s - %(message)s - %(name)s.%(funcName)s ';
 date_fmt  = '%Y%m%d%H%M';        # Format for datetime objects
 
 # stations = {
@@ -31,8 +31,8 @@ url_check = 'http://catalog.eol.ucar.edu/meso18-19/upperair';
 # }
 
 ftp_info = {
-  'url'    : '192.168.200.150',
-  'user'   : 'kwodzicki',
+  'url'    : None,
+  'user'   : None,
   'passwd' : None,
   'dir'    : '/pub/incoming/catalog/vortexse',
 }

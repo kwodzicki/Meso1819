@@ -14,7 +14,7 @@ class QLogger(logging.Handler):
     self.frame = QtGui.QFrame(parent);                                          # Initialize a QFrame to place other widgets in
     
     self.label      = QtGui.QLabel('Logs');                                     # Define a label for the frame
-    self.log_widget = QtGui.QPlainTextEdit();                                   # Initialize a QPlainTextWidget to write logs to
+    self.log_widget = QtGui.QTextEdit();                                        # Initialize a QPlainTextWidget to write logs to
     self.log_widget.verticalScrollBar().minimum();                              # Set a vertical scroll bar on the log widget
     self.log_widget.horizontalScrollBar().minimum();                            # Set a horizontal scroll bar on the log widget
     self.log_widget.setLineWrapMode( self.log_widget.NoWrap );                  # Set line wrap mode to no wrapping
@@ -26,12 +26,22 @@ class QLogger(logging.Handler):
     layout.addWidget( self.log_widget );                                        # Add the text widget to the layout scheme
 
     self.frame.setLayout( layout );                                             # Set the layout of the fram to the layout scheme defined
+  ##############################################################################
   def emit(self, record):
     '''
     Overload the emit method so that it prints to the text widget
     '''
-    msg = self.format(record)
-    self.log_widget.appendPlainText(msg)  
+    msg = self.format(record);                                                  # Format the message for logging
+    if record.levelno >= logging.CRITICAL:                                      # If the log level is critical
+      self.log_widget.setTextColor( QtCore.Qt.red );                            # Set text color to red
+    elif record.levelno >= logging.ERROR:                                       # Elif level is error
+      self.log_widget.setTextColor( QtCore.Qt.darkMagenta );                    # Set text color to darkMagenta
+    elif record.levelno >= logging.WARNING:                                     # Elif level is warning
+      self.log_widget.setTextColor( QtCore.Qt.darkCyan );                       # Set text color to darkCyan
+    else:                                                                       # Else
+      self.log_widget.setTextColor( QtCore.Qt.black );                          # Set text color to black
+    self.log_widget.append(msg);                                                # Add the log to the text widget
+  ##############################################################################
   def write(self, m):
     '''
     Overload the write method so that it does nothing
@@ -64,6 +74,7 @@ class indicator( QtGui.QWidget ):
 class dateFrame( QtGui.QFrame ):
   def __init__(self, parent = None):
     QtGui.QFrame.__init__(self, parent);
+    self.log   = logging.getLogger( __name__ );
     self.year  = QtGui.QLineEdit( )
     self.month = QtGui.QLineEdit( )
     self.day   = QtGui.QLineEdit( )
@@ -94,12 +105,14 @@ class dateFrame( QtGui.QFrame ):
                        int( self.day.text()   ),
                        int( self.hour.text()  ) );
     except:
+      self.log.error( 'Must set the date!' );
       self.errorDialog( "Must set the date!!!" )      
       return None, None;
     return date, date.strftime( settings.date_fmt );
   ##############################################################################
   def resetDate(self):
     '''Method to reset all date entry boxes'''
+    self.log.debug( 'Resetting the date' );
     self.year.setText(  '' )
     self.month.setText( '' )
     self.day.setText(   '' )

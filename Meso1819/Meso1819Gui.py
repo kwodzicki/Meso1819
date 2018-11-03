@@ -42,9 +42,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
-    
-    self.log = logging.getLogger( )
-    self.log.setLevel( logging.DEBUG );
+    self.log = logging.getLogger( __name__ )
     self.initUI();                                                              # Run method to initialize user interface
 
   ##############################################################################
@@ -99,7 +97,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.resetButton.clicked.connect( self.reset_values );                      # Set method to run when 'Check website' button is clicked
     
     log_handler = QLogger( );                                                   # Initialize a QLogger logging.Handler object
-    self.log.addHandler(log_handler);                                           # Add the Handler object to the logger
+    logging.getLogger('Meso1819').addHandler( log_handler );                    # Get the Meso1819 root logger and add the handler to it
 
     grid = QtGui.QGridLayout();                                                 # Initialize grid layout
     grid.setSpacing(10);                                                        # Set spacing to 10
@@ -228,9 +226,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     failed = False;                                                             # Initialize failed to False    
     self.uploadFiles = []
     self.date, self.date_str = self.dateFrame.getDate( );                       # Get datetime object and date string as entered in the gui
-    if self.date is None:                                                       # If the date variable is set to None
-      self.log.error( 'Date not set!!!' );                                      # Log an error
-      return;                                                                   # Return from function
+    if self.date is None: return;                                               # If the date variable is set to None
     self.dst_dirFull  = os.path.join( 
       self.dst_dir, 'IOP'+self.iopName.text(), self.date_str
     );                                                                          # Build destination directory using the dst_dir, iopName, and date string
@@ -387,7 +383,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     if not res:                                                                 # If one or more files failed to upload
       dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
       dial.setText( "Something went wrong!\n\n" + \
-        "There was an error uploading one or more files to the FTP.\n" + \
+        "There was an error uploading one or more files to the FTP.\n\n"  + \
         "Check the logs to determine which file(s) failed to upload.\n\n" + \
         "YOU MUST MANUALLY UPLOAD ANY FILES THAT FAILED!!!"
       );                                                                        # Set the message for the dialog
