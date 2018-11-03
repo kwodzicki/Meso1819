@@ -108,6 +108,20 @@ class dateFrame( QtGui.QFrame ):
       self.log.error( 'Must set the date!' );
       self.errorDialog( "Must set the date!!!" )      
       return None, None;
+
+    # Dialog to remind user to make sure date is entered correctly
+    dial = QtGui.QMessageBox();                                                 # Initialize a QMessage dialog
+    dial.setText( "Are you sure you entered to date correctly?\n\n" + \
+      "It MUST be in UTC time!"
+    );                                                                          # Set the message for the dialog
+    dial.setIcon(QtGui.QMessageBox.Question);                                   # Set the icon for the dialog
+    no = dial.addButton('No', QtGui.QMessageBox.RejectRole);                    # Add no button
+    dial.addButton('Yes', QtGui.QMessageBox.YesRole);                           # Add a yes button
+    dial.exec_();                                                               # Generate the message window
+    if dial.clickedButton() == no:                                              # If the user clicked no
+      self.log.warning('Canceled because incorrect date');                      # Log a warning
+      return None, None;
+
     return date, date.strftime( settings.date_fmt );
   ##############################################################################
   def resetDate(self):

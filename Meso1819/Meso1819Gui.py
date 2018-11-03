@@ -209,19 +209,6 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.errorDialog( "Must set the Station Name!!!");
       return
 
-    # Dialog to remind user to make sure date is entered correctly
-    dial = QtGui.QMessageBox();                                                 # Initialize a QMessage dialog
-    dial.setText( "Are you sure you entered to date correctly?\n\n" + \
-      "It MUST be in UTC time!"
-    );                                                                          # Set the message for the dialog
-    dial.setIcon(QtGui.QMessageBox.Question);                                   # Set the icon for the dialog
-    no = dial.addButton('No', QtGui.QMessageBox.RejectRole);                    # Add no button
-    dial.addButton('Yes', QtGui.QMessageBox.YesRole);                           # Add a yes button
-    dial.exec_();                                                               # Generate the message window
-    if dial.clickedButton() == no:                                              # If the user clicked no
-      self.log.warning('Copy cancelled due to incorrect date!');                # Log a warning
-      return;                                                                   # Return from function
-    
     # Main copying code
     failed = False;                                                             # Initialize failed to False    
     self.uploadFiles = []
