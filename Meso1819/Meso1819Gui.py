@@ -1,25 +1,25 @@
 import logging
-
 import os, shutil, webbrowser;
 import numpy as np;
+
+from PySide import QtCore, QtGui;
+
+# Imports for SHARPpy
 try:
   import ConfigParser;
 except:
   import configparser as ConfigParse;
-
-from PySide import QtCore;
-from PySide import QtGui;
-
 from utils.async import AsyncThreads
-
 from sharppy.viz.SPCWindow import SPCWindow
 from sharppy.io.decoder import getDecoders
 
+# Local imports
 from iMet2SHARPpy import iMet2SHARPpy;
 from ftpUpload import ftpUpload;
 from widgets import QLogger, dateFrame, indicator;
 import settings;
 
+# Set up some directory paths
 _home    = os.path.expanduser('~');
 _desktop = os.path.join( _home, 'Desktop' );
 
