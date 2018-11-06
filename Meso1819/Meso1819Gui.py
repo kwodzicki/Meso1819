@@ -178,8 +178,11 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.log.warning( 'No destination directory set' )                        # Log a warning
       self.reset_values( noDialog = True )                                      # Reset all the values in the GUI with no confirmation dialog
     else:                                                                       # Else
+      if 'IOP' in os.path.basename( self.dst_dir ).upper():                     # If an IOP directory was selected
+        self.log.debug('Moved IOP# from directory path as it is append later'); # Log some debugging information
+        self.dst_dir = os.path.dirname( self.dst_dir );                         # Remove the IOP directory from the destination directory
       self.destSet.show( );                                                     # Set the destPath label text
-      self.destPath.setText( dst_dir )                                          # Show the destPath label
+      self.destPath.setText( self.dst_dir )                                     # Show the destPath label
       self.destPath.show()                                                      # Show the destSet icon
       if self.src_dir is not None:                                              # If the src_dir attribute is not None
         self.uploadFiles = [];
