@@ -443,6 +443,5 @@ class Meso1819Gui( QMainWindow ):
     for key in self.ftpInfo:
       self.ftpInfo[key]['files']  = [];
       self.ftpInfo[key]['upload'] = False;
-    print( self.ftpInfo );
   def __reset_ftpInfo(self):
     self.ftpInfo = None;
