@@ -23,9 +23,16 @@ convert = {
 
 url_check = 'http://catalog.eol.ucar.edu/meso18-19/upperair';
 
-ftp_info = {
+ucar_ftp = {
   'url'    : 'catalog.eol.ucar.edu',
   'user'   : 'anonymous',
   'passwd' : None,
   'dir'    : '/pub/incoming/catalog/vortexse',
-};           
+};
+
+noaa_ftp = {
+  'url'    : 'awftp.fsl.noaa.gov',
+  'user'   : 'anonymous',
+  'passwd' : None,
+  'dir'    : '/its/vortex-se/sondes',
+};

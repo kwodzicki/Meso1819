@@ -2,7 +2,8 @@ import logging
 import os, shutil, webbrowser;
 import numpy as np;
 
-from PySide import QtCore, QtGui;
+from PySide.QtGui import QMainWindow, QWidget, QFileDialog, QPixmap, QLabel;
+from PySide.QtGui import QLineEdit, QPushButton, QGridLayout;
 
 # Imports for SHARPpy
 try:
@@ -11,22 +12,23 @@ except:
   import configparser as ConfigParse;
 from utils.async import AsyncThreads
 from sharppy.viz.SPCWindow import SPCWindow
-from sharppy.io.decoder import getDecoders
+from sharppy.io.spc_decoder import SPCDecoder;
 
 # Local imports
 from iMet2SHARPpy import iMet2SHARPpy;
 from ftpUpload import ftpUpload;
 from widgets import QLogger, dateFrame, indicator;
+from messageBoxes import criticalMessage, saveMessage, confirmMessage;
 import settings;
 
 # Set up some directory paths
-_home    = os.path.expanduser('~');
-_desktop = os.path.join( _home, 'Desktop' );
+_home     = os.path.expanduser('~');
+_desktop  = os.path.join( _home, 'Desktop' );
 
 #############################################
-class Meso1819Gui( QtGui.QMainWindow ):
+class Meso1819Gui( QMainWindow ):
   def __init__(self, parent = None):
-    QtGui.QMainWindow.__init__(self);                                           # Initialize the base class
+    QMainWindow.__init__(self);                                           # Initialize the base class
     self.setWindowTitle('Meso 18/19 Sounding Processor');                       # Set the window title
     self.src_dir     = None;                                                    # Set attribute for source data directory to None
     self.dst_dir     = None;                                                    # Set attribute for destination data directory to None
@@ -38,7 +40,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.skew        = None;                                                    # Set attribute for the skewt plot to None
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
     self.sndDataPNG  = None;                                                    # Set attribute for sounding image file
-    self.uploadFiles = None;                                                    # Set attribute for list of files to upload to ftp
+    self.ftpInfo     = None;                                                    # Set attribute for ftp info
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
@@ -51,14 +53,14 @@ class Meso1819Gui( QtGui.QMainWindow ):
     Method to setup the buttons/entries of the Gui
     '''
     self.dateFrame    = dateFrame( );                                           # Initialize the dateFrame
-    self.iopLabel     = QtGui.QLabel('IOP Number');                             # Initialize Entry widget for the IOP name
-    self.iopName      = QtGui.QLineEdit();                                      # Initialize Entry widget for the IOP name
-    self.stationLabel = QtGui.QLabel('Station Name');                           # Initialize Entry widget for the IOP name
-    self.stationName  = QtGui.QLineEdit();                                      # Initialize Entry widget for the IOP name
-    self.sourceButton = QtGui.QPushButton('Source Directory');                  # Initialize button for selecting the source directory
-    self.destButton   = QtGui.QPushButton('Destination Directory');             # Initialize button for selecting the destination directory
-    self.sourcePath   = QtGui.QLineEdit('');                                    # Initialize entry widget that will display the source directory path
-    self.destPath     = QtGui.QLineEdit('');                                    # Initialize entry widget that will display the destination directory path
+    self.iopLabel     = QLabel('IOP Number');                                   # Initialize Entry widget for the IOP name
+    self.iopName      = QLineEdit();                                            # Initialize Entry widget for the IOP name
+    self.stationLabel = QLabel('Station Name');                                 # Initialize Entry widget for the IOP name
+    self.stationName  = QLineEdit();                                            # Initialize Entry widget for the IOP name
+    self.sourceButton = QPushButton('Source Directory');                        # Initialize button for selecting the source directory
+    self.destButton   = QPushButton('Destination Directory');                   # Initialize button for selecting the destination directory
+    self.sourcePath   = QLineEdit('');                                          # Initialize entry widget that will display the source directory path
+    self.destPath     = QLineEdit('');                                          # Initialize entry widget that will display the destination directory path
     self.sourceSet    = indicator();                                            # Initialize an indictor that will appear when the source path is set
     self.destSet      = indicator();                                            # Initialize an indictor that will appear when the destination path is set
     
@@ -73,33 +75,33 @@ class Meso1819Gui( QtGui.QMainWindow ):
     self.sourceButton.clicked.connect( self.select_source );                    # Set method to run when the source button is clicked 
     self.destButton.clicked.connect(   self.select_dest   );                    # Set method to run when the destination button is clicked
 
-    self.copyButton = QtGui.QPushButton( 'Copy Files' );                        # Create 'Copy Files' button
+    self.copyButton = QPushButton( 'Copy Files' );                              # Create 'Copy Files' button
     self.copyButton.clicked.connect( self.copy_files );                         # Set method to run when 'Copy Files' button is clicked
     self.copyButton.setEnabled(False);                                          # Set enabled state to False; cannot click until after the source and destination directories set
 
-    self.procButton = QtGui.QPushButton( 'Process Files' );                     # Create 'Process Files' button
+    self.procButton = QPushButton( 'Process Files' );                           # Create 'Process Files' button
     self.procButton.clicked.connect( self.proc_files );                         # Set method to run when 'Process Files' button is clicked
     self.procButton.setEnabled(False);                                          # Set enabled state to False; cannot click until after 'Copy Files' completes
 
-    self.genButton = QtGui.QPushButton( 'Generate Sounding' );                  # Create 'Generate Sounding' button
+    self.genButton = QPushButton( 'Generate Sounding' );                        # Create 'Generate Sounding' button
     self.genButton.clicked.connect( self.gen_sounding );                        # Set method to run when 'Generate Sounding' button is clicked
     self.genButton.setEnabled(False);                                           # Set enabled state to False; cannot click until after 'Process Files' completes
 
-    self.uploadButton = QtGui.QPushButton( 'FTP Upload' );                      # Create 'FTP Upload' button
+    self.uploadButton = QPushButton( 'FTP Upload' );                            # Create 'FTP Upload' button
     self.uploadButton.clicked.connect( self.ftp_upload );                       # Set method to run when 'FTP Upload' button is clicked
     self.uploadButton.setEnabled(False);                                        # Set enabled state to False; cannot click until after 'Generate Sounding' completes
 
-    self.checkButton = QtGui.QPushButton( 'Check website' );                    # Create 'Check website' button
+    self.checkButton = QPushButton( 'Check website' );                          # Create 'Check website' button
     self.checkButton.clicked.connect( self.check_site );                        # Set method to run when 'Check website' button is clicked
     self.checkButton.setEnabled(False);                                         # Set enabled state to False; cannot click until after 'FTP Upload' completes
 
-    self.resetButton = QtGui.QPushButton( 'Reset' );                            # Create 'Check website' button
+    self.resetButton = QPushButton( 'Reset' );                                  # Create 'Check website' button
     self.resetButton.clicked.connect( self.reset_values );                      # Set method to run when 'Check website' button is clicked
     
     log_handler = QLogger( );                                                   # Initialize a QLogger logging.Handler object
     logging.getLogger('Meso1819').addHandler( log_handler );                    # Get the Meso1819 root logger and add the handler to it
 
-    grid = QtGui.QGridLayout();                                                 # Initialize grid layout
+    grid = QGridLayout();                                                       # Initialize grid layout
     grid.setSpacing(10);                                                        # Set spacing to 10
     for i in range(4): 
       grid.setColumnStretch(i,  0);                                             # Set column stretch for ith column
@@ -109,8 +111,8 @@ class Meso1819Gui( QtGui.QMainWindow ):
 
     grid.setRowStretch(1,  0);                                                  # Set column stretch for 5th column
     grid.setRowStretch(3,  0);                                                  # Set column stretch for 5th column
-    grid.setRowMinimumHeight(1,  25);                                            # Set column min width for 5th column
-    grid.setRowMinimumHeight(3,  25);                                            # Set column min width for 5th column
+    grid.setRowMinimumHeight(1,  25);                                           # Set column min width for 5th column
+    grid.setRowMinimumHeight(3,  25);                                          # Set column min width for 5th column
     
     grid.addWidget( self.sourceButton,  0, 0, 1, 4 );                           # Place a widget in the grid
     grid.addWidget( self.sourceSet,     0, 4, 1, 1 );                           # Place a widget in the grid
@@ -134,8 +136,8 @@ class Meso1819Gui( QtGui.QMainWindow ):
     grid.addWidget( self.checkButton,  11, 0, 1, 4 );                           # Place a widget in the grid
     grid.addWidget( self.resetButton,  12, 0, 1, 4 );                           # Place a widget in the grid
 
-    grid.addWidget( log_handler.frame, 0, 6, 12, 1);
-    centralWidget = QtGui.QWidget();                                            # Create a main widget
+    grid.addWidget( log_handler.frame, 0, 6, 13, 1);
+    centralWidget = QWidget();                                                  # Create a main widget
     centralWidget.setLayout( grid );                                            # Set the main widget's layout to the grid
     self.setCentralWidget(centralWidget);                                       # Set the central widget of the base class to the main widget
     
@@ -147,7 +149,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     sounding data that was collected
     '''
     self.log.info('Setting the source directory')
-    src_dir = QtGui.QFileDialog.getExistingDirectory( dir = _desktop );         # Open a selection dialog
+    src_dir = QFileDialog.getExistingDirectory( dir = _desktop );               # Open a selection dialog
     self.src_dir = None if src_dir == '' else src_dir;                          # Update the src_dir attribute based on the value of src_dir
 
     if self.src_dir is None:                                                    # If the src_dir attribute is None
@@ -158,7 +160,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.sourcePath.show();                                                   # Show the sourcePath label
       self.sourceSet.show();                                                    # Show the sourceSet icon
       if self.dst_dir is not None:                                              # If the dst_dir attribute is not None
-        self.uploadFiles = [];
+        self.__init_ftpInfo();                                                  # Initialize ftpInfo attribute using method
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
         self.reset_values(noDialog = True, noSRC = True, noDST = True);         # Reset all values excluding the src AND dst directory
       else:
@@ -171,7 +173,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
     sounding data that was collected
     '''
     self.log.info('Setting the destination directory')
-    dst_dir = QtGui.QFileDialog.getExistingDirectory( dir = _desktop);          # Open a selection dialog
+    dst_dir = QFileDialog.getExistingDirectory( dir = _desktop);                # Open a selection dialog
     self.dst_dir = None if dst_dir == '' else dst_dir;                          # Update the dst_dir attribute based on the value of dst_dir
                                                                                 
     if self.dst_dir is None:                                                    # If the dst_dir attribute is None
@@ -185,7 +187,7 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.destPath.setText( self.dst_dir )                                     # Show the destPath label
       self.destPath.show()                                                      # Show the destSet icon
       if self.src_dir is not None:                                              # If the src_dir attribute is not None
-        self.uploadFiles = [];
+        self.__init_ftpInfo();                                                  # Initialize ftpInfo attribute using method
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
         self.reset_values(noDialog = True, noSRC = True, noDST = True);         # Reset all values excluding the src AND dst directory
       else:
@@ -205,16 +207,16 @@ class Meso1819Gui( QtGui.QMainWindow ):
 
     if self.iopName.text() == '':
       self.log.error( 'IOP Number NOT set!!!' )
-      self.errorDialog( "Must set the IOP Number!!!" );
+      criticalMessage( "Must set the IOP Number!!!" ).exec_();
       return
     if self.stationName.text() == '':
       self.log.error( 'Station Name NOT set!!!' )
-      self.errorDialog( "Must set the Station Name!!!");
+      criticalMessage( "Must set the Station Name!!!" ).exec_();
       return
 
     # Main copying code
     failed = False;                                                             # Initialize failed to False    
-    self.uploadFiles = []
+    self.__init_ftpInfo();                                                      # Initialize ftpInfo attribute using method
     self.date, self.date_str = self.dateFrame.getDate( );                       # Get datetime object and date string as entered in the gui
     if self.date is None: return;                                               # If the date variable is set to None
     self.dst_dirFull  = os.path.join( 
@@ -224,16 +226,13 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.log.info( 'Creating directory: ' + self.dst_dirFull );               # Log some information
       os.makedirs( self.dst_dirFull );                                          # IF the dst_dir does NOT exist, then create it
     else:                                                                       # Else, the directory exists, so check to over write
-      dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
-      dial.setText( "The destination directory exists!\n" + \
+      dial = confirmMessage( 
+        "The destination directory exists!\n" + \
         "Do you want to overwrite it?\n\n" + \
         "YOU CANNOT UNDO THIS ACTION!!!" 
-      );                                                                        # Set the message for the dialog
-      dial.setIcon(QtGui.QMessageBox.Question);                                 # Set the icon for the dialog
-      yes = dial.addButton('Yes', QtGui.QMessageBox.YesRole);                   # Add a yes button
-      dial.addButton('No', QtGui.QMessageBox.RejectRole);                       # Add a no button
+      );
       dial.exec_();                                                             # Generate the message window
-      if dial.clickedButton() == yes:                                           # If the yes button was clicked
+      if dial.check():
         self.log.info( 'Removing directory: ' + self.dst_dirFull );             # Log some information
         shutil.rmtree( self.dst_dirFull );                                      # Delete the directory
         self.log.info( 'Creating directory: ' + self.dst_dirFull );             # Log some information
@@ -259,14 +258,11 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.log.info( 'Ready to process data files!' );                          # Log some info
       self.procButton.setEnabled( True );                                       # Enable the 'Process Files' button
     else:                                                                       # Else, something went wrong
-      dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
-      dial.setText( "Something went wrong!\n\n" + \
+      criticalMessage(
+        "Something went wrong!\n\n" + \
         "There was an error copying a data file.\n" + \
         "Please check the logs and directories to see what happened."
-      );                                                                        # Set the message for the dialog
-      dial.setIcon(QtGui.QMessageBox.Critical);                                 # Set the icon for the dialog
-      dial.addButton('Ok', QtGui.QMessageBox.YesRole);                          # Add a yes button
-      dial.exec_();                                                             # Generate the message window
+      ).exec_(); 
 
   ##############################################################################
   def proc_files(self, *args):
@@ -301,14 +297,15 @@ class Meso1819Gui( QtGui.QMainWindow ):
           res = iMet2SHARPpy( src, self.stationName.text().upper(), 
             datetime = self.date, output = self.sndDataFile);                   # Run function to convert data to SHARPpy format
           if res and os.path.isfile( self.sndDataFile ):                        # If function returned True and the output file exists
-            self.uploadFiles.append( self.sndDataFile );
+            self.ftpInfo['ucar']['files'].append( self.sndDataFile );
+            self.ftpInfo['noaa']['files'].append( self.sndDataFile );
           else:
             failed = True;                                                      # Set failed to True
             self.sndDataFile = None;                                            # if the function failed to run OR the output file does NOT exist
             self.log.error( 'There was an error creating SHARPpy file!' );      # Log an error
-            self.errorDialog(
+            criticalMessage(
               'Problem converting the sounding data to SHARPpy format!'
-            );                                                                  # Display error dialog
+            ).exec_();                                                          # Generate critical error message box
     if not failed:                                                              # If failed is False
       self.log.info( 'Ready to generate sounding image!' );                     # Log some info
       self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
@@ -322,36 +319,40 @@ class Meso1819Gui( QtGui.QMainWindow ):
     sndDataPNG      = settings.skewT_fmt.format( self.date_str );               # Set the name for the skewT file using the settings.skew_T_fmt string
     self.sndDataPNG = os.path.join( self.dst_dirFull, sndDataPNG );             # Set the sndDataPNG attribute using the dst_dirFull attribute and sndDataFile variable
 
-    prof_collection, stn_id = self.__loadArchive( self.sndDataFile );           # Load the SHARPpy sounding data file
+    try:                                                                        # Try to...
+      decoder = SPCDecoder( self.sndDataFile );                                 # Decode the sounding file using the SPCDecoder
+      profile = decoder.getProfiles();                                          # Get the profiles from the file
+      stn_id  = decoder.getStnId();                                             # Get the station id from the file
+    except:                                                                     # On exception
+      criticalMessage( 
+        "There was an error loading the sounding data\n\n"
+      ).exec_();                                                                # Initialize and display critical error dialog
+      return;                                                                   # Return from method
     model     = "Archive";                                                      # Set model to 'Archive'; not sure why but was in the SHARPpy full_gui.py 
     disp_name = stn_id;                                                         # Set the display name to the station ID from the sounding data file
-    run       = prof_collection.getCurrentDate();                               # Set the run to the current date from the sounding data
-    prof_collection.setMeta('model', model);                                    # Set the model in the sounding data
-    prof_collection.setMeta('loc',   disp_name);                                # Set the display name in the sounding data
-    prof_collection.setMeta('run',   run);                                      # Set the run in the sounding data
+    run       = profile.getCurrentDate();                                       # Set the run to the current date from the sounding data
+    profile.setMeta('model', model);                                            # Set the model in the sounding data
+    profile.setMeta('loc',   disp_name);                                        # Set the display name in the sounding data
+    profile.setMeta('run',   run);                                              # Set the run in the sounding data
     
-    if not prof_collection.getMeta('observed'):                                 # If it's not an observed profile
-      prof_collection.setAsync( AsyncThreads(2, debug) );                       # Generate profile objects in background. Not sure why works but in SHARPpy full_gui.py
+    if not profile.getMeta('observed'):                                         # If it's not an observed profile
+      profile.setAsync( AsyncThreads(2, debug) );                               # Generate profile objects in background. Not sure why works but in SHARPpy full_gui.py
     
     if self.skew is None:                                                       # If there is no skew window setup; there should never be...
       self.skew = SPCWindow(cfg=self.config);                                   # Initialize a new SPCWindow object
       self.skew.closed.connect(self.__skewAppClosed);                           # Connect the closed method to the __skewAppClosed private method
-      self.skew.addProfileCollection(prof_collection);                          # Add the profile data to the SPCWindow object
+      self.skew.addProfileCollection(profile);                                  # Add the profile data to the SPCWindow object
       self.skew.show();                                                         # Show the window
 
-    dial = QtGui.QMessageBox()                                                  # Initialize QMessage box
-    dial.setText( "Check that the image looks okay.\n " + \
+    dial = saveMessage(
+      "Check that the image looks okay.\n " + \
       "If ok, click save, else click cancel"
-    );                                                                          # Set message for the box
-    dial.setIcon(QtGui.QMessageBox.Critical);                                   # Set icon for message to stop sign
-    dial.addButton('Cancel', QtGui.QMessageBox.RejectRole);                     # Add cancel button
-    save = dial.addButton('Save', QtGui.QMessageBox.YesRole);                   # Add save button
-    dial.exec_();                                                               # Display the message dialog
-        
-    if dial.clickedButton() == save:                                            # If the user clicked the save button
-      self.uploadFiles.append( self.sndDataPNG );
+    );                                                                          # Set up save message pop-up
+    dial.exec_();                                                               # Display the save message pop-up
+    if dial.check():                                                            # If clicked save
+      self.ftpInfo['ucar']['files'].append( self.sndDataPNG );                  # Append the SHARPpy image file name to the ftpInfo['ucar']['files'] list
       self.log.info('Saving the Skew-T to: {}'.format( self.sndDataPNG ) );     # Log some information
-      pixmap = QtGui.QPixmap.grabWidget( self.skew );                           # Grab the image from the skew T window
+      pixmap = QPixmap.grabWidget( self.skew );                                 # Grab the image from the skew T window
       pixmap.save( self.sndDataPNG, 'PNG', 100);                                # Save the image
       self.config.set('paths', 'save_img', os.path.dirname(self.sndDataPNG));   # Add image path to the config object
       self.uploadButton.setEnabled( True );                                     # Enable the upload button
@@ -361,38 +362,41 @@ class Meso1819Gui( QtGui.QMainWindow ):
 
   ##############################################################################
   def ftp_upload(self, *args):
-    self.log.info( 'uploading data' )    
-    
-    ftp = ftpUpload( settings.ftp_info['url'] );                                # Set up and FTP instance
-    res = ftp.uploadFiles(
-      settings.ftp_info['dir'], 
-      self.uploadFiles, 
-      user   = settings.ftp_info['user'],
-      passwd = settings.ftp_info['passwd'],
-    );                                                                          # Attempt to upload the files
-    if not res:                                                                 # If one or more files failed to upload
-      dial = QtGui.QMessageBox();                                               # Initialize a QMessage dialog
-      dial.setText( "Something went wrong!\n\n" + \
-        "There was an error uploading one or more files to the FTP.\n\n"  + \
-        "Check the logs to determine which file(s) failed to upload.\n\n" + \
-        "YOU MUST MANUALLY UPLOAD ANY FILES THAT FAILED!!!"
-      );                                                                        # Set the message for the dialog
-      dial.setIcon(QtGui.QMessageBox.Critical);                                 # Set the icon for the dialog
-      dial.addButton('Ok', QtGui.QMessageBox.YesRole);                          # Add a yes button
-      dial.exec_();                                                             # Generate the message window
-      return;
-    self.log.info( 'Data upload successful!' )
-    self.checkButton.setEnabled(True)
+    for key in self.ftpInfo:                                                    # Iterate over the keys in the ftpInfo attribute
+      self.log.info( 'Uploading data to: {}'.format(self.ftpInfo[key]['url']) );# Log some info
+      try:                                                                      # Try to...
+        ftp = ftpUpload( self.ftpInfo[key]['url'] );                            # Set up and FTP instance
+      except:                                                                   # On exception...
+        self.log.critical( 
+          'Error initializing the FTP upload: {}'.format(
+            self.ftpInfo[key]['url']
+          )
+        );                                                                      # Log a critical error
+      else:                                                                     # Else...
+        self.ftpInfo[key]['upload'] = ftp.uploadFiles(
+          self.ftpInfo[key]['dir'], 
+          self.ftpInfo[key]['files'], 
+          user   = self.ftpInfo[key]['user'],
+          passwd = self.ftpInfo[key]['passwd'],
+        );                                                                      # Attempt to upload the files
+      if not self.ftpInfo[key]['upload']:                                       # If one or more files failed to upload
+        msg = 'FAILED!!! Upload to {} NOT successful';                          # Formatter for error message
+        self.log.critical( msg.format( self.ftpInfo[key]['url'] ) );            # Log a critical error
+        criticalMessage( 
+          "Something went wrong!\n\n" + \
+          "There was an error uploading one or more files to the FTP.\n\n"  + \
+          "FTP Address: {}\n\n".format( self.ftpInfo[key]['url'] )          + \
+          "Check the logs to determine which file(s) failed to upload.\n\n" + \
+          "YOU MUST MANUALLY UPLOAD ANY FILES THAT FAILED!!!"
+        ).exec_();
+      else:
+        self.log.info( 'Data upload successful!' );
+    if self.ftpInfo['ucar']['upload']:                                          # If the upload to UCAR was a success
+      self.checkButton.setEnabled(True)
   ##############################################################################
   def check_site(self, *args):
     self.log.info( 'Checking site' )    
     webbrowser.open( settings.url_check )
-  ##############################################################################
-  def errorDialog( self, message ):
-    QtGui.QMessageBox().critical(self, 
-      "Caution!", 
-      message
-    );
   ##############################################################################
   def reset_values(self, noDialog = False, noSRC = False, noDST = False):
     '''
@@ -406,14 +410,9 @@ class Meso1819Gui( QtGui.QMainWindow ):
     '''
     check = False;                                                              # Dialog check value initialize to False
     if not noDialog:                                                            # If noDialog is False
-      dial = QtGui.QMessageBox();                                               # Initialize a QMessage box
-      dial.setText( "Are you sure you want to reset all values?");              # Set the text for the message box
-      dial.setIcon(QtGui.QMessageBox.Question);                                 # Set the icon to a question mark
-      yes = dial.addButton('Yes', QtGui.QMessageBox.YesRole);                   # Add a yes button
-      dial.addButton('Cancel', QtGui.QMessageBox.RejectRole);                   # Add a cancel button
-      dial.exec_();                                                             # Generate the window
-      check = dial.clickedButton() == yes;                                      # Set check to result of button clicked == yes button
-        
+      dial = confirmMessage( 'Are you sure you want to reset all values?' );    # Initialize confirmation dialog
+      dial.exec_();                                                             # Display the confirmation dialog
+      check = dial.check();                                                     # Check which button selected
     if check or noDialog:                                                       # If the check is True or noDialog is True
       self.log.debug( 'Resetting all values!' );                                # Log some information
       if not noSRC or not noDST:                                                # If noSRC is False OR noDST is false
@@ -433,28 +432,17 @@ class Meso1819Gui( QtGui.QMainWindow ):
       self.dateFrame.resetDate();                                               # Reset all the dates
       self.iopName.setText(     '' );                                           # Initialize Entry widget for the IOP name
       self.stationName.setText( '' );                                           # Initialize Entry widget for the IOP name
-  ##############################################################################
-  def __loadArchive(self, filename):
-    """
-    Get the archive sounding based on the user's selections.
-    Also reads it using the Decoders and gets both the stationID and the profile objects
-    for that archive sounding.
-    """
-    for decname, deccls in getDecoders().iteritems():
-      try:
-        dec = deccls(filename)
-        break
-      except:
-        dec = None
-        continue
-    
-    if dec is None:
-      raise IOError("Could not figure out the format of '%s'!" % filename)
-    
-    profs  = dec.getProfiles()
-    stn_id = dec.getStnId()    
-    return profs, stn_id
+      self.__reset_ftpInfo();
   ##############################################################################
   def __skewAppClosed(self):
     self.skew = None;
-   
+  ##############################################################################
+  def __init_ftpInfo(self):
+    self.ftpInfo = {'ucar' : settings.ucar_ftp, 
+                    'noaa' : settings.noaa_ftp};
+    for key in self.ftpInfo:
+      self.ftpInfo[key]['files']  = [];
+      self.ftpInfo[key]['upload'] = False;
+    print( self.ftpInfo );
+  def __reset_ftpInfo(self):
+    self.ftpInfo = None;
