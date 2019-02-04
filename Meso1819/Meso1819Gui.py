@@ -1,9 +1,12 @@
 import logging
-import os, shutil, webbrowser;
+import os, shutil, time, webbrowser;
 import numpy as np;
+from datetime import datetime;
+from threading import Thread, Event;
 
 from PySide.QtGui import QMainWindow, QWidget, QFileDialog, QPixmap, QLabel;
 from PySide.QtGui import QLineEdit, QPushButton, QGridLayout;
+from PySide.QtCore import QTimer, Signal, Slot;
 
 # Imports for SHARPpy
 try:
@@ -27,8 +30,9 @@ _desktop  = os.path.join( _home, 'Desktop' );
 
 #############################################
 class Meso1819Gui( QMainWindow ):
+  timeCheck = Signal();                                                          # Signal for time checking; used if the user tries to create Skew-T before the request sounding time actually happens; i.e., sounding date is in future
   def __init__(self, parent = None):
-    QMainWindow.__init__(self);                                           # Initialize the base class
+    QMainWindow.__init__(self);                                                 # Initialize the base class
     self.setWindowTitle('Meso 18/19 Sounding Processor');                       # Set the window title
     self.src_dir     = None;                                                    # Set attribute for source data directory to None
     self.dst_dir     = None;                                                    # Set attribute for destination data directory to None
@@ -41,12 +45,14 @@ class Meso1819Gui( QMainWindow ):
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
     self.sndDataPNG  = None;                                                    # Set attribute for sounding image file
     self.ftpInfo     = None;                                                    # Set attribute for ftp info
+    self.timer       = QTimer(self);
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
+    self.timer.timeout.connect( self._timeCheck   );
+    self.timeCheck.connect(     self.on_timeCheck );                                # Connect on_timeCheck method to the timeCheck signal
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
     self.log = logging.getLogger( __name__ )
     self.initUI();                                                              # Run method to initialize user interface
-
   ##############################################################################
   def initUI(self):
     '''
@@ -307,8 +313,25 @@ class Meso1819Gui( QMainWindow ):
               'Problem converting the sounding data to SHARPpy format!'
             ).exec_();                                                          # Generate critical error message box
     if not failed:                                                              # If failed is False
-      self.log.info( 'Ready to generate sounding image!' );                     # Log some info
-      self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
+      if self.date > datetime.utcnow():                                         # If the date for the sound is in the future
+        self.timer.start(100)
+        dt  = self.date - datetime.utcnow()
+        msg = ['Date requested is in the future!', 
+               'Sounding generation disabled until requested sounding time',
+               'Wait time remaining {}'.format( str(dt) ) ];
+        self.log.warning( '\n'.join(msg) );
+        criticalMessage(
+          'The data processing has completed!\n\n' + \
+          'However, the requested date/time for the\n' + \
+          'sounding is in the future!\n\n' +\
+          'The \'Generate Sounding\' button will activate\n' + \
+          'when the current time is after the requested time!'
+        ).exec_();                                                          # Generate critical error message box
+
+      else:
+        self.timeCheck.emit();
+#        self.log.info( 'Ready to generate sounding image!' );                     # Log some info
+#        self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
   ##############################################################################
   def gen_sounding(self, *args):
     '''
@@ -433,6 +456,22 @@ class Meso1819Gui( QMainWindow ):
       self.iopName.setText(     '' );                                           # Initialize Entry widget for the IOP name
       self.stationName.setText( '' );                                           # Initialize Entry widget for the IOP name
       self.__reset_ftpInfo();
+      self.timer.stop();
+  ##############################################################################
+  def closeEvent(self, event):
+    '''Overload the closeEvent'''
+    self.timer.stop();
+    event.accept();
+  ##############################################################################
+  @Slot()
+  def on_timeCheck(self):
+    self.log.info( 'Ready to generate sounding image!' );                     # Log some info
+    self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
+  ##############################################################################
+  def _timeCheck(self):
+    if self.date <= datetime.utcnow():                                         # Check requested date is in the future AND the timeEvent is NOT set
+      self.timer.stop();
+      self.timeCheck.emit();                                                  # Emit a signal to enable the 'Generate Sounding' button
   ##############################################################################
   def __skewAppClosed(self):
     self.skew = None;
