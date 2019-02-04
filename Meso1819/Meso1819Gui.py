@@ -84,18 +84,26 @@ class Meso1819Gui( QMainWindow ):
     self.copyButton = QPushButton( 'Copy Files' );                              # Create 'Copy Files' button
     self.copyButton.clicked.connect( self.copy_files );                         # Set method to run when 'Copy Files' button is clicked
     self.copyButton.setEnabled(False);                                          # Set enabled state to False; cannot click until after the source and destination directories set
+    self.copySucces = indicator();                                              # Initialize an indictor that will appear when the copy complete successfuly
+    self.copySucces.hide();
 
     self.procButton = QPushButton( 'Process Files' );                           # Create 'Process Files' button
     self.procButton.clicked.connect( self.proc_files );                         # Set method to run when 'Process Files' button is clicked
     self.procButton.setEnabled(False);                                          # Set enabled state to False; cannot click until after 'Copy Files' completes
+    self.procSucces = indicator();                                              # Initialize an indictor that will appear when the processing complete successfuly
+    self.procSucces.hide();
 
     self.genButton = QPushButton( 'Generate Sounding' );                        # Create 'Generate Sounding' button
     self.genButton.clicked.connect( self.gen_sounding );                        # Set method to run when 'Generate Sounding' button is clicked
     self.genButton.setEnabled(False);                                           # Set enabled state to False; cannot click until after 'Process Files' completes
+    self.genSucces = indicator();                                               # Initialize an indictor that will appear when the sounding generation complete successfuly
+    self.genSucces.hide();
 
     self.uploadButton = QPushButton( 'FTP Upload' );                            # Create 'FTP Upload' button
     self.uploadButton.clicked.connect( self.ftp_upload );                       # Set method to run when 'FTP Upload' button is clicked
     self.uploadButton.setEnabled(False);                                        # Set enabled state to False; cannot click until after 'Generate Sounding' completes
+    self.uploadSucces = indicator();                                            # Initialize an indictor that will appear when the ftp upload complete successfuly
+    self.uploadSucces.hide();
 
     self.checkButton = QPushButton( 'Check website' );                          # Create 'Check website' button
     self.checkButton.clicked.connect( self.check_site );                        # Set method to run when 'Check website' button is clicked
@@ -136,9 +144,13 @@ class Meso1819Gui( QMainWindow ):
 
     grid.addWidget( self.dateFrame,     6, 0, 1, 4 );                           # Place a widget in the grid
     grid.addWidget( self.copyButton,    7, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.copySucces,    7, 4, 1, 1 );                           # Place a widget in the grid
     grid.addWidget( self.procButton,    8, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.procSucces,    8, 4, 1, 1 );                           # Place a widget in the grid
     grid.addWidget( self.genButton,     9, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.genSucces,     9, 4, 1, 1 );                           # Place a widget in the grid
     grid.addWidget( self.uploadButton, 10, 0, 1, 4 );                           # Place a widget in the grid
+    grid.addWidget( self.uploadSucces, 10, 4, 1, 1 );                           # Place a widget in the grid
     grid.addWidget( self.checkButton,  11, 0, 1, 4 );                           # Place a widget in the grid
     grid.addWidget( self.resetButton,  12, 0, 1, 4 );                           # Place a widget in the grid
 
@@ -262,6 +274,7 @@ class Meso1819Gui( QMainWindow ):
     if not failed:
       self.log.info( 'Finished copying' );                                      # log some information
       self.log.info( 'Ready to process data files!' );                          # Log some info
+      self.copySucces.show();                                                   # Show green light next to the 'Copy Files' button to indicate that step is complete
       self.procButton.setEnabled( True );                                       # Enable the 'Process Files' button
     else:                                                                       # Else, something went wrong
       criticalMessage(
@@ -313,25 +326,23 @@ class Meso1819Gui( QMainWindow ):
               'Problem converting the sounding data to SHARPpy format!'
             ).exec_();                                                          # Generate critical error message box
     if not failed:                                                              # If failed is False
-      if self.date > datetime.utcnow():                                         # If the date for the sound is in the future
-        self.timer.start(100)
-        dt  = self.date - datetime.utcnow()
+      self.procSucces.show();                                                   # Show green light next to the 'Process Files' button to indicate that step is complete
+      if self.date <= datetime.utcnow():                                        # If the date for the sound is NOT in the future
+        self.timeCheck.emit();                                                  # Emit signal to activate the 'Generate Sounding' button
+      else:                                                                     # Else, date for sounding IS in the future
+        self.timer.start(100);                                                  # Start the QTimer and run it every 100 ms
+        dt  = self.date - datetime.utcnow();                                    # Compute the current time difference between the sounding and utcnow
         msg = ['Date requested is in the future!', 
                'Sounding generation disabled until requested sounding time',
-               'Wait time remaining {}'.format( str(dt) ) ];
-        self.log.warning( '\n'.join(msg) );
+               'Wait time remaining {}'.format( str(dt) ) ];                    # List that contains message for the logger
+        self.log.warning( '\n'.join(msg) );                                     # Log the message as a warning
         criticalMessage(
           'The data processing has completed!\n\n' + \
           'However, the requested date/time for the\n' + \
           'sounding is in the future!\n\n' +\
           'The \'Generate Sounding\' button will activate\n' + \
           'when the current time is after the requested time!'
-        ).exec_();                                                          # Generate critical error message box
-
-      else:
-        self.timeCheck.emit();
-#        self.log.info( 'Ready to generate sounding image!' );                     # Log some info
-#        self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
+        ).exec_();                                                             # Generate critical error message box
   ##############################################################################
   def gen_sounding(self, *args):
     '''
@@ -378,6 +389,7 @@ class Meso1819Gui( QMainWindow ):
       pixmap = QPixmap.grabWidget( self.skew );                                 # Grab the image from the skew T window
       pixmap.save( self.sndDataPNG, 'PNG', 100);                                # Save the image
       self.config.set('paths', 'save_img', os.path.dirname(self.sndDataPNG));   # Add image path to the config object
+      self.genSucces.show();                                                    # Show green light next to the 'Generate Sounding' button to indicate that step is complete
       self.uploadButton.setEnabled( True );                                     # Enable the upload button
     else:                                                                       # Else
       self.log.critical('Skew-T save aborted! Not allowed to upload!');         # Log an error
@@ -415,6 +427,7 @@ class Meso1819Gui( QMainWindow ):
       else:
         self.log.info( 'Data upload successful!' );
     if self.ftpInfo['ucar']['upload']:                                          # If the upload to UCAR was a success
+      self.uploadSucces.show();                                                 # Show green light next to the 'FTP Upload' button to indicate that step is complete
       self.checkButton.setEnabled(True)
   ##############################################################################
   def check_site(self, *args):
@@ -444,6 +457,11 @@ class Meso1819Gui( QMainWindow ):
       self.genButton.setEnabled(False);                                         # Set enabled state to False; cannot click until after 'Process Files' completes
       self.uploadButton.setEnabled(False);                                      # Set enabled state to False; cannot click until after 'Generate Sounding' completes
       self.checkButton.setEnabled(False);                                       # Set enabled state to False; cannot click until after 'FTP Upload' completes
+      
+      self.copySucces.hide();
+      self.procSucces.hide();
+      self.genSucces.hide()
+      self.uploadSucces.hide();
   
       if not noSRC:                                                             # If the noSRC keyword is NOT set
         self.sourcePath.hide();                                                 # Hide the source directory path
