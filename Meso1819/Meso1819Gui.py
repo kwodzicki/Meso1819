@@ -30,7 +30,7 @@ _desktop  = os.path.join( _home, 'Desktop' );
 
 #############################################
 class Meso1819Gui( QMainWindow ):
-  timeCheck = Signal();                                                          # Signal for time checking; used if the user tries to create Skew-T before the request sounding time actually happens; i.e., sounding date is in future
+  timeCheck = Signal();                                                         # Signal for time checking; used if the user tries to create Skew-T before the request sounding time actually happens; i.e., sounding date is in future
   def __init__(self, parent = None):
     QMainWindow.__init__(self);                                                 # Initialize the base class
     self.setWindowTitle('Meso 18/19 Sounding Processor');                       # Set the window title
@@ -45,10 +45,8 @@ class Meso1819Gui( QMainWindow ):
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
     self.sndDataPNG  = None;                                                    # Set attribute for sounding image file
     self.ftpInfo     = None;                                                    # Set attribute for ftp info
-    self.timer       = QTimer(self);
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
-    self.timer.timeout.connect( self._timeCheck   );
-    self.timeCheck.connect(     self.on_timeCheck );                                # Connect on_timeCheck method to the timeCheck signal
+    self.timeCheck.connect( self.on_timeCheck );                                # Connect on_timeCheck method to the timeCheck signal
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
     self.log = logging.getLogger( __name__ )
@@ -330,7 +328,6 @@ class Meso1819Gui( QMainWindow ):
       if self.date <= datetime.utcnow():                                        # If the date for the sound is NOT in the future
         self.timeCheck.emit();                                                  # Emit signal to activate the 'Generate Sounding' button
       else:                                                                     # Else, date for sounding IS in the future
-        self.timer.start(100);                                                  # Start the QTimer and run it every 100 ms
         dt  = self.date - datetime.utcnow();                                    # Compute the current time difference between the sounding and utcnow
         msg = ['Date requested is in the future!', 
                'Sounding generation disabled until requested sounding time',
@@ -342,7 +339,9 @@ class Meso1819Gui( QMainWindow ):
           'sounding is in the future!\n\n' +\
           'The \'Generate Sounding\' button will activate\n' + \
           'when the current time is after the requested time!'
-        ).exec_();                                                             # Generate critical error message box
+        ).exec_();                                                              # Generate critical error message box
+        dt = (int( dt.total_seconds() ) + 2) * 1000;                            # Get total time between now and future time, add 2 seconds, convert to integer, then conver to milliseconds
+        QTimer.singleShot( dt, self._timeCheck );                               # Run single shot timer thread for the _timeCheck method, waiting dt milliseconds before running
   ##############################################################################
   def gen_sounding(self, *args):
     '''
@@ -394,7 +393,6 @@ class Meso1819Gui( QMainWindow ):
     else:                                                                       # Else
       self.log.critical('Skew-T save aborted! Not allowed to upload!');         # Log an error
     self.skew.close();                                                          # Close the skew T window
-
   ##############################################################################
   def ftp_upload(self, *args):
     for key in self.ftpInfo:                                                    # Iterate over the keys in the ftpInfo attribute
@@ -452,11 +450,11 @@ class Meso1819Gui( QMainWindow ):
     if check or noDialog:                                                       # If the check is True or noDialog is True
       self.log.debug( 'Resetting all values!' );                                # Log some information
       if not noSRC or not noDST:                                                # If noSRC is False OR noDST is false
-        self.copyButton.setEnabled(False);                                      # Set enabled state to False; cannot click until after the source and destination directories set
-      self.procButton.setEnabled(False);                                        # Set enabled state to False; cannot click until after 'Copy Files' completes
-      self.genButton.setEnabled(False);                                         # Set enabled state to False; cannot click until after 'Process Files' completes
-      self.uploadButton.setEnabled(False);                                      # Set enabled state to False; cannot click until after 'Generate Sounding' completes
-      self.checkButton.setEnabled(False);                                       # Set enabled state to False; cannot click until after 'FTP Upload' completes
+        self.copyButton.setEnabled( False );                                    # Set enabled state to False; cannot click until after the source and destination directories set
+      self.procButton.setEnabled(   False );                                    # Set enabled state to False; cannot click until after 'Copy Files' completes
+      self.genButton.setEnabled(    False );                                    # Set enabled state to False; cannot click until after 'Process Files' completes
+      self.uploadButton.setEnabled( False );                                    # Set enabled state to False; cannot click until after 'Generate Sounding' completes
+      self.checkButton.setEnabled(  False );                                    # Set enabled state to False; cannot click until after 'FTP Upload' completes
       
       self.copySucces.hide();
       self.procSucces.hide();
@@ -474,22 +472,29 @@ class Meso1819Gui( QMainWindow ):
       self.iopName.setText(     '' );                                           # Initialize Entry widget for the IOP name
       self.stationName.setText( '' );                                           # Initialize Entry widget for the IOP name
       self.__reset_ftpInfo();
-      self.timer.stop();
   ##############################################################################
   def closeEvent(self, event):
-    '''Overload the closeEvent'''
-    self.timer.stop();
-    event.accept();
+    '''
+    Method to override closeEvent handler to add a confirmation dialog
+    to application quit
+    '''
+    dial = confirmMessage( "Are you sure you want to quit?" );                  # Initialize confirmation for quitting
+    dial.exec_();                                                               # Generate the message window
+    if dial.check():                                                            # If user selected yes on dialog
+      event.accept();                                                           # Accept the event and close the GUI
+    else:                                                                       # Else
+      event.ignore();                                                           # Ignore the event; i.e., keep GUI open
   ##############################################################################
   @Slot()
   def on_timeCheck(self):
-    self.log.info( 'Ready to generate sounding image!' );                     # Log some info
-    self.genButton.setEnabled( True );                                        # Enable the 'Generate Sounding' button
+    self.log.info( 'Ready to generate sounding image!' );                       # Log some info
+    self.genButton.setEnabled( True );                                          # Enable the 'Generate Sounding' button
   ##############################################################################
   def _timeCheck(self):
-    if self.date <= datetime.utcnow():                                         # Check requested date is in the future AND the timeEvent is NOT set
-      self.timer.stop();
-      self.timeCheck.emit();                                                  # Emit a signal to enable the 'Generate Sounding' button
+    if self.date <= datetime.utcnow():                                          # Check requested date is in the future AND the timeEvent is NOT set
+      self.timeCheck.emit();                                                    # Emit a signal to enable the 'Generate Sounding' button
+    else:                                                                       # Else, date is still in future...
+      QTimer.singleShot( 1000, self._timeCheck );                               # Wait one second and call this method again
   ##############################################################################
   def __skewAppClosed(self):
     self.skew = None;
@@ -500,5 +505,6 @@ class Meso1819Gui( QMainWindow ):
     for key in self.ftpInfo:
       self.ftpInfo[key]['files']  = [];
       self.ftpInfo[key]['upload'] = False;
+  ##############################################################################
   def __reset_ftpInfo(self):
     self.ftpInfo = None;
