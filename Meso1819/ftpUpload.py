@@ -12,7 +12,7 @@ class ftpUpload( FTP ):
       self.login( user, passwd );
     except Exception as err:
       self.log.critical('Failed to login to FTP!');
-#       self.log.error( err );
+      self.log.critical( 'ftplib: {}'.format(err) );                          # Log the ftplib error so know what is happening
       return False; 
     self.log.info('Logged into FTP server')
     return True; 
@@ -22,7 +22,7 @@ class ftpUpload( FTP ):
       self.quit( )
     except Exception as err:
       self.log.warning('Failed to log out correctly!');
-#       self.log.error( err );
+      self.log.critical( 'ftplib: {}'.format(err) );                          # Log the ftplib error so know what is happening
       return False;
     self.log.info('Logged out of FTP server')
     return True;
@@ -32,7 +32,7 @@ class ftpUpload( FTP ):
       self.cwd( dir )
     except Exception as err:
       self.log.critical('Failed to change directory!');
-#       self.log.error( err );
+      self.log.critical( 'ftplib: {}'.format(err) );                          # Log the ftplib error so know what is happening
       return False;
     self.log.info('Changed to {}'.format(dir))
     return True;
@@ -51,8 +51,8 @@ class ftpUpload( FTP ):
         self.storbinary( 'STOR {}'.format( base ), fid );                       # Upload the file
       except Exception as err:                                                  # On error
         failed = True;                                                          # Set failed to True
-#         log.error( err );
         self.log.critical( 'Failed to upload file {}'.format(base) );           # Log some information
+        self.log.critical( 'ftplib: {}'.format(err) );                          # Log the ftplib error so know what is happening
       else:
         self.log.info( 'Uploaded file: {}'.format( base ) );
       fid.close();                                                              # close the file
