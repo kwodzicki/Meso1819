@@ -6,7 +6,7 @@ from threading import Thread, Event;
 
 from PySide.QtGui import QMainWindow, QWidget, QFileDialog, QPixmap, QLabel;
 from PySide.QtGui import QLineEdit, QPushButton, QGridLayout;
-from PySide.QtCore import QTimer, Signal, Slot;
+from PySide.QtCore import Qt, QTimer, Signal, Slot;
 
 # Imports for SHARPpy
 try:
@@ -19,6 +19,7 @@ from sharppy.io.spc_decoder import SPCDecoder;
 
 # Local imports
 from iMet2SHARPpy import iMet2SHARPpy;
+from version import __version__;
 from ftpUpload import ftpUpload;
 from widgets import QLogger, dateFrame, indicator;
 from messageBoxes import criticalMessage, saveMessage, confirmMessage;
@@ -110,7 +111,9 @@ class Meso1819Gui( QMainWindow ):
     self.resetButton = QPushButton( 'Reset' );                                  # Create 'Check website' button
     self.resetButton.clicked.connect( self.reset_values );                      # Set method to run when 'Check website' button is clicked
     
-    log_handler = QLogger( );                                                   # Initialize a QLogger logging.Handler object
+    versionLabel = QLabel( 'version: {}'.format(__version__) );                 # Version label
+    versionLabel.setAlignment( Qt.AlignHCenter );                               # Set alignment to center
+    log_handler  = QLogger( );                                                  # Initialize a QLogger logging.Handler object
     logging.getLogger('Meso1819').addHandler( log_handler );                    # Get the Meso1819 root logger and add the handler to it
 
     grid = QGridLayout();                                                       # Initialize grid layout
@@ -124,7 +127,7 @@ class Meso1819Gui( QMainWindow ):
     grid.setRowStretch(1,  0);                                                  # Set column stretch for 5th column
     grid.setRowStretch(3,  0);                                                  # Set column stretch for 5th column
     grid.setRowMinimumHeight(1,  25);                                           # Set column min width for 5th column
-    grid.setRowMinimumHeight(3,  25);                                          # Set column min width for 5th column
+    grid.setRowMinimumHeight(3,  25);                                           # Set column min width for 5th column
     
     grid.addWidget( self.sourceButton,  0, 0, 1, 4 );                           # Place a widget in the grid
     grid.addWidget( self.sourceSet,     0, 4, 1, 1 );                           # Place a widget in the grid
@@ -153,6 +156,7 @@ class Meso1819Gui( QMainWindow ):
     grid.addWidget( self.resetButton,  12, 0, 1, 4 );                           # Place a widget in the grid
 
     grid.addWidget( log_handler.frame, 0, 6, 13, 1);
+    grid.addWidget( versionLabel, 20, 0, 1, 7)
     centralWidget = QWidget();                                                  # Create a main widget
     centralWidget.setLayout( grid );                                            # Set the main widget's layout to the grid
     self.setCentralWidget(centralWidget);                                       # Set the central widget of the base class to the main widget
