@@ -380,7 +380,7 @@ class Meso1819Gui( QMainWindow ):
 
     save_msg = "Check that the image looks okay.\n " + \
       "If ok, click save, else click cancel";                                   # Confirmation message for the save dialog for Skew-T; will update if cannot save Skew-T due to issue in SHARPpy
-
+    sharppy_bug = False;                                                        # Flag for if sharppy bug encountered
     try:                                                                        # Try to...
       decoder = SPCDecoder( self.sndDataFile );                                 # Decode the sounding file using the SPCDecoder
       profile = decoder.getProfiles();                                          # Get the profiles from the file
@@ -408,6 +408,7 @@ class Meso1819Gui( QMainWindow ):
       try:
         self.skew.show();                                                         # Show the window
       except:
+        sharppy_bug = True;
         self.log.warning("SHARPpy didn't like that sounding very much!")
         save_msg = "Congradulations!\n\n"   + \
           "You just found a bug in SHARPpy.\n" + \
@@ -416,11 +417,15 @@ class Meso1819Gui( QMainWindow ):
     dial = saveMessage( save_msg );                                             # Set up save message pop-up
     dial.exec_();                                                               # Display the save message pop-up
     if dial.check():                                                            # If clicked save
-      self.ftpInfo['ucar']['files'].append( self.sndDataPNG );                  # Append the SHARPpy image file name to the ftpInfo['ucar']['files'] list
-      self.log.info('Saving the Skew-T to: {}'.format( self.sndDataPNG ) );     # Log some information
-      pixmap = QPixmap.grabWidget( self.skew );                                 # Grab the image from the skew T window
-      pixmap.save( self.sndDataPNG, 'PNG', 100);                                # Save the image
-      self.config.set('paths', 'save_img', os.path.dirname(self.sndDataPNG));   # Add image path to the config object
+      if not sharppy_bug:                                                       # If the SHARPpy bug did NOT occur
+        self.ftpInfo['ucar']['files'].append( self.sndDataPNG );                # Append the SHARPpy image file name to the ftpInfo['ucar']['files'] list
+        self.log.info('Saving the Skew-T to: {}'.format( self.sndDataPNG ) );   # Log some information
+        pixmap = QPixmap.grabWidget( self.skew );                               # Grab the image from the skew T window
+        pixmap.save( self.sndDataPNG, 'PNG', 100);                              # Save the image
+        self.config.set('paths', 'save_img', os.path.dirname(self.sndDataPNG)); # Add image path to the config object
+
+      self.log.debug( 'Files to upload to UCAR: {}'.format( 
+        ', '.join(self.ftpInfo['ucar']['files']) ) )
       self.genSucces.show();                                                    # Show green light next to the 'Generate Sounding' button to indicate that step is complete
       self.uploadButton.setEnabled( True );                                     # Enable the upload button
     else:                                                                       # Else
