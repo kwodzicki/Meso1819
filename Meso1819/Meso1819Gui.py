@@ -295,24 +295,31 @@ class Meso1819Gui( QMainWindow ):
     failed = False;                                                             # Initialize failed to False
     self.log.info( 'Processing files' );    
     files = os.listdir( self.dst_dirFull );                                     # Get list of all files in the directory
+    rename_status  = dict.fromkeys( settings.rename.keys(),  False);            # Status of file renaming
+    process_status = dict.fromkeys( settings.convert.keys(), False);            # Status of file processing
+
     for file in files:                                                          # Iterate over the list of files
       for key in settings.rename:                                               # Loop over the keys in the settings.rename dictionary
         if key in file:                                                         # If the key is in the source file name
+          rename_status[key] = True;                                            # Add rname status as True
           dst_file = settings.rename[key].format( self.date_str );              # Set a destination file name
           dst      = os.path.join( self.dst_dirFull, dst_file );                # Build the destination file path
           src      = os.path.join( self.dst_dirFull, file );                    # Set source file path
-#           self.uploadFiles.append( dst );                                       # Append the file to the uploadFile list
+#           self.uploadFiles.append( dst );                                     # Append the file to the uploadFile list
           self.log.info( 'Moving file: {} -> {}'.format(src, dst) );            # Log some information
           os.rename( src, dst );                                                # Move the file
           if not os.path.isfile( dst ):                                         # If the renamed file does NOT exist
             self.log.error( 'There was an error renaming the file!' );          # Log an error
             failed = True;                                                      # Set failed to True
+      
+      file_found = False;                                                       # Flag for in the file to process is found!
       for key in settings.convert:                                              # Loop over the keys in the settings.rename dictionary
         if key in file:                                                         # If the key is in the source file name
+          process_status[key] = True;                                           # Set to true if the file is found
           dst_file = settings.convert[key].format( self.date_str );             # Set a destination file name
           self.sndDataFile = os.path.join( self.dst_dirFull, dst_file );        # Build the destination file path
           src              = os.path.join( self.dst_dirFull, file );            # Set source file path
-#           self.uploadFiles.append( dst );                                        # Append the file to the uploadFile list
+#           self.uploadFiles.append( dst );                                     # Append the file to the uploadFile list
           
           self.log.info( 'Converting sounding data to SHARPpy format...' );     # Log some information
           res = iMet2SHARPpy( src, self.stationName.text().upper(), 
@@ -327,6 +334,21 @@ class Meso1819Gui( QMainWindow ):
             criticalMessage(
               'Problem converting the sounding data to SHARPpy format!'
             ).exec_();                                                          # Generate critical error message box
+    
+    if not all( rename_status.values() ):
+      failed = True;
+      self.log.error( 'There was an error renaming one or more files!' );       # Log an error
+      criticalMessage(
+        'Problem renaming one or more files!'
+      ).exec_();                                                          # Generate critical error message box
+
+    if not all( process_status.values() ):
+      failed = True;
+      self.log.error( 'There was an error converting one or more files to SHARPpy format!' );       # Log an error
+      criticalMessage(
+        'Problem converting one or more files to SHARPpy format!'
+      ).exec_();                                                          # Generate critical error message box
+
     if not failed:                                                              # If failed is False
       self.procSucces.show();                                                   # Show green light next to the 'Process Files' button to indicate that step is complete
       if self.date <= datetime.utcnow():                                        # If the date for the sound is NOT in the future
@@ -375,6 +397,7 @@ class Meso1819Gui( QMainWindow ):
     if not profile.getMeta('observed'):                                         # If it's not an observed profile
       profile.setAsync( AsyncThreads(2, debug) );                               # Generate profile objects in background. Not sure why works but in SHARPpy full_gui.py
     
+    self.log.debug('Generating SHARPpy window')
     if self.skew is None:                                                       # If there is no skew window setup; there should never be...
       self.skew = SPCWindow(cfg=self.config);                                   # Initialize a new SPCWindow object
       self.skew.closed.connect(self.__skewAppClosed);                           # Connect the closed method to the __skewAppClosed private method
