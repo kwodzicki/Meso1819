@@ -378,6 +378,9 @@ class Meso1819Gui( QMainWindow ):
     sndDataPNG      = settings.skewT_fmt.format( self.date_str );               # Set the name for the skewT file using the settings.skew_T_fmt string
     self.sndDataPNG = os.path.join( self.dst_dirFull, sndDataPNG );             # Set the sndDataPNG attribute using the dst_dirFull attribute and sndDataFile variable
 
+    save_msg = "Check that the image looks okay.\n " + \
+      "If ok, click save, else click cancel";                                   # Confirmation message for the save dialog for Skew-T; will update if cannot save Skew-T due to issue in SHARPpy
+
     try:                                                                        # Try to...
       decoder = SPCDecoder( self.sndDataFile );                                 # Decode the sounding file using the SPCDecoder
       profile = decoder.getProfiles();                                          # Get the profiles from the file
@@ -402,12 +405,15 @@ class Meso1819Gui( QMainWindow ):
       self.skew = SPCWindow(cfg=self.config);                                   # Initialize a new SPCWindow object
       self.skew.closed.connect(self.__skewAppClosed);                           # Connect the closed method to the __skewAppClosed private method
       self.skew.addProfileCollection(profile);                                  # Add the profile data to the SPCWindow object
-      self.skew.show();                                                         # Show the window
-
-    dial = saveMessage(
-      "Check that the image looks okay.\n " + \
-      "If ok, click save, else click cancel"
-    );                                                                          # Set up save message pop-up
+      try:
+        self.skew.show();                                                         # Show the window
+      except:
+        self.log.warning("SHARPpy didn't like that sounding very much!")
+        save_msg = "Congradulations!\n\n"   + \
+          "You just found a bug in SHARPpy.\n" + \
+          "There is nothing we can about this. No Skew-T can be created.\n" + \
+          "Just click 'Save' and continue with the uploading";
+    dial = saveMessage( save_msg );                                             # Set up save message pop-up
     dial.exec_();                                                               # Display the save message pop-up
     if dial.check():                                                            # If clicked save
       self.ftpInfo['ucar']['files'].append( self.sndDataPNG );                  # Append the SHARPpy image file name to the ftpInfo['ucar']['files'] list
@@ -419,7 +425,10 @@ class Meso1819Gui( QMainWindow ):
       self.uploadButton.setEnabled( True );                                     # Enable the upload button
     else:                                                                       # Else
       self.log.critical('Skew-T save aborted! Not allowed to upload!');         # Log an error
-    self.skew.close();                                                          # Close the skew T window
+    try:
+      self.skew.close();                                                        # Close the skew T window
+    except:
+      pass;
   ##############################################################################
   def ftp_upload(self, *args):
     for key in self.ftpInfo:                                                    # Iterate over the keys in the ftpInfo attribute
