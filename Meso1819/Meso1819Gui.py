@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 import os, shutil, time, webbrowser;
 import numpy as np;
 from datetime import datetime;
@@ -28,7 +29,9 @@ import settings;
 # Set up some directory paths
 _home     = os.path.expanduser('~');
 _desktop  = os.path.join( _home, 'Desktop' );
-
+_logfile  = os.path.join( _desktop, 'Meso1819_Gui.log' )
+_logsize  = 1024**2
+_logcount = 1
 #############################################
 class Meso1819Gui( QMainWindow ):
   timeCheck = Signal();                                                         # Signal for time checking; used if the user tries to create Skew-T before the request sounding time actually happens; i.e., sounding date is in future
@@ -50,7 +53,12 @@ class Meso1819Gui( QMainWindow ):
     self.timeCheck.connect( self.on_timeCheck );                                # Connect on_timeCheck method to the timeCheck signal
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
       self.config.add_section( 'paths' );                                       # Add a 'paths' section to the parser
-    self.log = logging.getLogger( __name__ )
+    self.log = logging.getLogger( __name__ );                                   # Get a logger
+    rfh = RotatingFileHandler(_logfile,maxBytes=_logsize,backupCount=_logcount);# Create rotating file handler
+    rfhFMT = logging.Formatter( '%(asctime)s - ' + settings.log_fmt );          # Logger format
+    rfh.setFormatter( rfhFMT )
+    rfh.setLevel( logging.DEBUG );                                              # Set log level to debug
+    self.log.addHandler( rfh );                                                 # Add handler to main logger
     self.initUI();                                                              # Run method to initialize user interface
   ##############################################################################
   def initUI(self):
