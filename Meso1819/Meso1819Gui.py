@@ -49,6 +49,7 @@ class Meso1819Gui( QMainWindow ):
     self.sndDataFile = None;                                                    # Set attribute for sounding data input file
     self.sndDataPNG  = None;                                                    # Set attribute for sounding image file
     self.ftpInfo     = None;                                                    # Set attribute for ftp info
+    self.ranFTP      = False;                                                   # Boolean to check if FTP uploading has been tried
     self.config      = ConfigParser.RawConfigParser();                          # Initialize a ConfigParser; required for the SPCWidget
     self.timeCheck.connect( self.on_timeCheck );                                # Connect on_timeCheck method to the timeCheck signal
     if not self.config.has_section('paths'):                                    # If there is no 'paths' section in the parser
@@ -188,7 +189,6 @@ class Meso1819Gui( QMainWindow ):
       self.sourcePath.show();                                                   # Show the sourcePath label
       self.sourceSet.show();                                                    # Show the sourceSet icon
       if self.dst_dir is not None:                                              # If the dst_dir attribute is not None
-        self.__init_ftpInfo();                                                  # Initialize ftpInfo attribute using method
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
         self.reset_values(noDialog = True, noSRC = True, noDST = True);         # Reset all values excluding the src AND dst directory
       else:
@@ -215,7 +215,6 @@ class Meso1819Gui( QMainWindow ):
       self.destPath.setText( self.dst_dir )                                     # Show the destPath label
       self.destPath.show()                                                      # Show the destSet icon
       if self.src_dir is not None:                                              # If the src_dir attribute is not None
-        self.__init_ftpInfo();                                                  # Initialize ftpInfo attribute using method
         self.copyButton.setEnabled( True );                                     # Set the 'Copy Files' button to enabled
         self.reset_values(noDialog = True, noSRC = True, noDST = True);         # Reset all values excluding the src AND dst directory
       else:
@@ -333,8 +332,8 @@ class Meso1819Gui( QMainWindow ):
           res = iMet2SHARPpy( src, self.stationName.text().upper(), 
             datetime = self.date, output = self.sndDataFile);                   # Run function to convert data to SHARPpy format
           if res and os.path.isfile( self.sndDataFile ):                        # If function returned True and the output file exists
-            self.ftpInfo['ucar']['files'].append( self.sndDataFile );
-            self.ftpInfo['noaa']['files'].append( self.sndDataFile );
+            for key in self.ftpInfo:                                            # Iterate over keys in ftpInfo attribute
+              self.ftpInfo[key]['files'].append( self.sndDataFile );            # Append sounding data file path to files key in ftpInfo dictionary
           else:
             failed = True;                                                      # Set failed to True
             self.sndDataFile = None;                                            # if the function failed to run OR the output file does NOT exist
@@ -444,7 +443,12 @@ class Meso1819Gui( QMainWindow ):
       pass;
   ##############################################################################
   def ftp_upload(self, *args):
-    for key in self.ftpInfo:                                                    # Iterate over the keys in the ftpInfo attribute
+    if self.ranFTP:
+      self.log.info( 'You already ran this step!' );
+      criticalMessage( "You already tried to upload to FTP" ).exec_();          # Initialize confirmation for quitting
+      return;
+    self.ranFTP = True;                                                         # Set ran FTP to True
+    for key in self.ftpInfo:                                                    # Iterate over all keys in the ftpInfo dictionary
       self.log.info( 'Uploading data to: {}'.format(self.ftpInfo[key]['url']) );# Log some info
       try:                                                                      # Try to...
         ftp = ftpUpload( self.ftpInfo[key]['url'] );                            # Set up and FTP instance
@@ -520,6 +524,7 @@ class Meso1819Gui( QMainWindow ):
       self.dateFrame.resetDate();                                               # Reset all the dates
       self.iopName.setText(     '' );                                           # Initialize Entry widget for the IOP name
       self.stationName.setText( '' );                                           # Initialize Entry widget for the IOP name
+      self.ranFTP = False;                                                      # Reset ranFTP to False on reset
       self.__reset_ftpInfo();
   ##############################################################################
   def closeEvent(self, event):
